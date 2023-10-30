@@ -47,8 +47,8 @@ while ret:
 
         if flag1 and flag2:
             print('tumo')
-            thread = threading.Thread(target=sousa.no1())
-            thread.start()
+            #thread = threading.Thread(target=sousa.no1())
+            #thread.start()
             q1.clear()
             q2.clear()
 
