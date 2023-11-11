@@ -36,7 +36,7 @@ def get_field_info(img):
                 #cv2.imshow('banmen', grid)
                 #cv2.waitKey(0)
                 #cv2.destroyAllWindows()
-                puyo = puyo_class(grid)
+                puyo = classifier.predict(grid, template_type="field")
                 #print(puyo)
                 this_puyo = -1
                 #からの場合
@@ -305,6 +305,11 @@ FIELD_LABELS = 7
 NEXT_LABELS = 5
 
 def main():
+    field = np.zeros((12,6,7))
+    next1 = np.zeros((2,5))
+    next2 = np.zeros((2,5))
+    #ans = qnet.predict([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
+    DqnAgent.get_action([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
     capture = cv2.VideoCapture(1)
 
     if (capture.isOpened()== False):  
@@ -317,8 +322,8 @@ def main():
         lose_flag = False
         #arr1 = []
         #arr2 = []
-        q1 = collections.deque([], 3)
-        q2 = collections.deque([], 3)
+        q1 = collections.deque([], 4)
+        q2 = collections.deque([], 4)
         fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         #next2s = collections.deque([], 2)
@@ -339,9 +344,9 @@ def main():
                 player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
                 q1.append(player1_next)
                 q2.append(player1_next_next)
-                if len(q1) == 3:
-                    flag1 = (np.array_equal(q1[0], q1[1]) == 0) and (np.array_equal(q2[0], q2[1]) == 0)
-                    flag2 = (np.array_equal(q1[1], q1[2]) == 1) and (np.array_equal(q2[1], q2[2]) == 1)
+                if len(q1) == 4:
+                    flag1 = (np.array_equal(q1[0], q1[2]) == 0) and (np.array_equal(q2[0], q2[2]) == 0)
+                    flag2 = (np.array_equal(q1[1], q1[3]) == 1) and (np.array_equal(q2[1], q2[3]) == 1)
 
                     if flag1 and flag2:
                         #print('tumo')

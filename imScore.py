@@ -3,6 +3,7 @@ from PIL import Image, ImageOps
 import cv2
 import pyocr
 import pyocr.builders
+import threading
 
 '''
 im = Image.open('frames/frame1.jpg')
@@ -12,15 +13,53 @@ im_crop = ImageOps.invert(im_crop)
 im_crop.show()
 '''
 
+tools = pyocr.get_available_tools()
+tool = tools[0]
+#builder = pyocr.builders.TextBuilder(tesseract_layout=6)
+builder = pyocr.builders.DigitBuilder(tesseract_layout=6)
+#builder = pyocr.builders.TextBuilder()
+results = ['', '']
+
+def get_score1(score1):
+    results[0] = tool.image_to_string(SCORE1, builder=builder)
+
+def get_score2(score2):
+    results[1] = tool.image_to_string(SCORE2, builder=builder)
+
+def get_score(image):
+    ret2, image = cv2.threshold(image,240,255,cv2.THRESH_BINARY)
+    image = cv2.bitwise_not(image)
+    score1 = image[395:420, 100:214]
+    score2 = image[395:420, 424:538]
+
+    SCORE1 = Image.fromarray(score1)
+    SCORE2 = Image.fromarray(score2)
+
+    thread1 = threading.Thread(target=get_score1, args=(SCORE1,))
+    thread2 = threading.Thread(target=get_score2, args=(SCORE2,))
+    thread1.start()
+    thread2.start()
+    thread1.join()
+    thread2.join()
+    #result1 = tool.image_to_string(SCORE1, builder=builder)
+    #result2 = tool.image_to_string(SCORE2, builder=builder)
+    print(results[0])
+    print(results[1])
+
 image = cv2.imread('frames/frame1.jpg', 0)
-image = image[395:420, 100:214]
-ret2, img_otsu = cv2.threshold(image,240,255,cv2.THRESH_BINARY)
-img_otsu = cv2.bitwise_not(img_otsu)
+ret2, image = cv2.threshold(image,240,255,cv2.THRESH_BINARY)
+image = cv2.bitwise_not(image)
+score1 = image[395:420, 100:214]
+score2 = image[395:420, 424:538]
+#ret2, img_otsu = cv2.threshold(image,240,255,cv2.THRESH_BINARY)
+#img_otsu = cv2.bitwise_not(img_otsu)
 #cv2.imshow('img_otsu', img_otsu)
 #cv2.waitKey()
 #cv2.destroyAllWindows()
 
-IMG_OTSU = Image.fromarray(img_otsu)
+SCORE1 = Image.fromarray(score1)
+SCORE2 = Image.fromarray(score2)
+#IMG_OTSU = Image.fromarray(img_otsu)
 #IMG_OTSU.show()
 #num = pytesseract.image_to_string(IMG_OTSU)
 #print(num)
@@ -37,6 +76,7 @@ print(number)
 '''
 
 import time
+'''
 tools = pyocr.get_available_tools()
 tool = tools[0]
 
@@ -44,7 +84,14 @@ builder = pyocr.builders.TextBuilder(tesseract_layout=6)
 
 builder = pyocr.builders.TextBuilder()
 start = time.time()
-result = tool.image_to_string(IMG_OTSU, lang="jpn", builder=builder)
+result1 = tool.image_to_string(SCORE1, builder=builder)
+result2 = tool.image_to_string(SCORE2, builder=builder)
 end = time.time()
-print(result)
+print(result1)
+print(result2)
 print(end-start)
+'''
+
+start = time.time()
+get_score(image)
+print(time.time() - start)

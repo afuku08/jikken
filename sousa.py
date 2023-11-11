@@ -7,6 +7,8 @@ Created on Fri Sep 15 16:06:46 2023
 import pydirectinput as direct
 import threading
 
+direct.PAUSE = 0.05
+
 class sousa:
         
     def right():
