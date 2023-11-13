@@ -18,7 +18,7 @@ import pyocr
 import pyocr.builders
 import threading
 from PIL import Image, ImageOps
-import pydirectinput as direct
+import random
 
 def get_field_info(img):
     H = 324
@@ -171,14 +171,10 @@ builder = pyocr.builders.DigitBuilder(tesseract_layout=6)
 results = ['', '']
 
 def get_score1(score1):
-    score = tool.image_to_string(score1, builder=builder)
-    if score.isdecimal():
-        results[0] = int(score)
+    results[0] = tool.image_to_string(SCORE1, builder=builder)
 
 def get_score2(score2):
-    score = tool.image_to_string(score2, builder=builder)
-    if score.isdecimal():
-        results[1] = int(score)
+    results[1] = tool.image_to_string(SCORE2, builder=builder)
 
 def get_score(image):
     ret2, image = cv2.threshold(image,240,255,cv2.THRESH_BINARY)
@@ -197,8 +193,8 @@ def get_score(image):
     thread2.join()
     #result1 = tool.image_to_string(SCORE1, builder=builder)
     #result2 = tool.image_to_string(SCORE2, builder=builder)
-    #print(results[0])
-    #print(results[1])
+    print(results[0])
+    print(results[1])
     
 class FieldConstructor(object):
     def __init__(self, puyo_types):
@@ -226,8 +222,7 @@ def start_judge(img):
     #cv2.imshow('banmen', img[180:300, 223:403])
     now_hist = cv2.calcHist([img[180:300, 223:403]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(go_hist, now_hist, 0)
-    #print(comp_percent)
-    if comp_percent > 0.3:
+    if comp_percent > 0.4:
         return True
     else:
         return False
@@ -312,15 +307,15 @@ def create_Qmodel(learning_rate = 0.1**(4)):
 class DQNAgent:
     def __init__(self):
         self.gamma = 0.98
-        self.lr = 0.005
+        self.learning_rate = 0.005
         self.epsilon = 0.1
-        self.buffer_size = 10000
+        self.buffer_size = 1000
         self.batch_size = 32
         self.action_size = 22
 
         self.replay_buffer = Memory(self.buffer_size, self.batch_size)
-        self.qnet = create_Qmodel(self.lr)
-        self.qnet_target = create_Qmodel(self.lr)
+        self.qnet = create_Qmodel(self.learning_rate)
+        self.qnet_target = create_Qmodel(self.learning_rate)
     
     def sync_qnet(self):
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -333,8 +328,6 @@ class DQNAgent:
             return np.argmax(qs[0])
         
     def learning(self,batch_size=32):
-        if self.replay_buffer.len() <= self.batch_size:
-            return
 
         inputs = np.zeros((batch_size,12,6,7))
         inputs_puyo0 = np.zeros([batch_size, 2, 5])
@@ -369,168 +362,7 @@ class DQNAgent:
         return self.qnet
 
 def map2batch(gameMap,batch_size = 1):
-    return gameMap.reshape((batch_size,13,6,5))
-
-direct.PAUSE = 0.02
-
-class Sousa:
-        
-    def right():
-        direct.press('d')
-        
-    def left():
-        direct.press('a')
-        
-    def right_rotation():
-        direct.press('e')
-        
-    def left_rotation():
-        direct.press('q')
-        
-    def drop():
-        direct.press('s')
-        
-    def no1(self):
-        Sousa.left()
-        Sousa.left()
-    
-    def no2(self):
-        Sousa.left()
-
-    def no3(self):
-        return
-        
-    def no4(self):
-        Sousa.right()
-    
-    def no5(self):
-        Sousa.right()
-        Sousa.right()
-    
-    def no6(self):
-        Sousa.right()
-        Sousa.right()
-        Sousa.right()
-        
-    def no7(self):
-        Sousa.right_rotation()
-        Sousa.right_rotation()
-        Sousa.left()
-        Sousa.left()
-        
-    def no8(self):
-        Sousa.right_rotation()
-        Sousa.right_rotation()
-        Sousa.left()
-    
-    def no9(self):
-        Sousa.right_rotation()
-        Sousa.right_rotation()
-    
-    def no10(self):
-        Sousa.right_rotation()
-        Sousa.right_rotation()
-        Sousa.right()
-        
-    def no11(self):
-        Sousa.right_rotation()
-        Sousa.right_rotation()
-        Sousa.right()
-        Sousa.right()
-        
-    def no12(self):
-        Sousa.right_rotation()
-        Sousa.right_rotation()
-        Sousa.right()
-        Sousa.right()
-        Sousa.right()
-    
-    def no13(self):
-        Sousa.right_rotation()
-    
-    def no14(self):
-        Sousa.right_rotation()
-        Sousa.right()    
-        
-    def no15(self):
-        Sousa.right_rotation()
-        Sousa.right()
-        Sousa.right()
-
-    def no16(self):
-        Sousa.right_rotation()
-        Sousa.left()
-
-    def no17(self):
-        Sousa.right_rotation()
-        Sousa.left()
-        Sousa.left()
-    
-    def no18(self):
-        Sousa.left_rotation()
-        
-    def no19(self):
-        Sousa.left_rotation()
-        Sousa.left()
-    
-    def no20(self):
-        Sousa.left_rotation()
-        Sousa.right()
-    
-    def no21(self):
-        Sousa.left_rotation()
-        Sousa.right()
-    
-    def no22(self):
-        Sousa.left_rotation()
-        Sousa.right()
-
-sousa = Sousa()
-def try_action(action):
-    if action == 1:
-        sousa.no1()
-    elif action == 2:
-        sousa.no2()
-    elif action == 3:
-        sousa.no3()
-    elif action == 4:
-        sousa.no4()
-    elif action == 5:
-        sousa.no5()
-    elif action == 6:
-        sousa.no6()
-    elif action == 7:
-        sousa.no7()
-    elif action == 8:
-        sousa.no8()
-    elif action == 9:
-        sousa.no9()
-    elif action == 10:
-        sousa.no10()
-    elif action == 11:
-        sousa.no11()
-    elif action == 12:
-        sousa.no12()
-    elif action == 13:
-        sousa.no513()
-    elif action == 14:
-        sousa.no14()
-    elif action == 15:
-        sousa.no15()
-    elif action == 16:
-        sousa.no16()
-    elif action == 17:
-        sousa.no17()
-    elif action == 18:
-        sousa.no18()
-    elif action == 19:
-        sousa.no19()
-    elif action == 20:
-        sousa.no20()
-    elif action == 21:
-        sousa.no21()
-    elif action == 22:
-        sousa.no22()
+    return gameMap.reshape((batch_size,12,6,7))
 
 puyo_types = ["aka", "ao", "kiiro", "midori", "murasaki", "ojama", "back"]
 classifier = puyo_classifier(puyo_types)
@@ -540,94 +372,34 @@ DqnAgent = DQNAgent()
 FIELD_LABELS = 7
 NEXT_LABELS = 5
 
-def main():
-    field = np.zeros((12,6,7))
-    next1 = np.zeros((2,5))
-    next2 = np.zeros((2,5))
-    #ans = qnet.predict([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
-    DqnAgent.get_action([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
-    capture = cv2.VideoCapture(1)
-    #capture.set(cv2.CAP_PROP_FPS, 60)
+fields = collections.deque([], 2)
+nexts = collections.deque([], 2)
+for time in range(100):
+    field = np.zeros((12,6), dtype=np.uint8)
+    for i in range(12):
+        for j in range(6):
+            field[i][j] = random.randint(0,6)
 
-    if (capture.isOpened()== False):  
-        print("ビデオファイルを開くとエラーが発生しました") 
-    count = 0
-    ret, img = capture.read()
-    #for i in range(50):
-    count_time = 1
-    while True:
-        #start = time.time()
-        win_flag = False
-        lose_flag = False
-        #arr1 = []
-        #arr2 = []
-        q1 = collections.deque([], 5)
-        q2 = collections.deque([], 5)
-        fields = collections.deque([], 2)
-        nexts = collections.deque([], 2)
-        scores = collections.deque([], 2)
-        #next2s = collections.deque([], 2)
-        next_puyos = get_next_puyo_info(img)
-        nexts.append(next_puyos[0])
-        #next2s.append(next_puyos[1])
-        results[0] = 0
-        results[1] = 0
-        if start_judge(img):
-            while True:
-                start = time.time()
-                count_time += 1
-                if count_time % 30 == 0:
-                    get_score(img)
-                    count_time = 1
-                win_flag = win_judge(img)
-                lose_flag = lose_judge(img)
-                if win_flag or lose_flag:
-                    count += 1
-                    break
-                player1_next = img[73 : 123 , 240 : 260]
-                player1_next_next = img[132 : 172 , 259 : 274]
-                player1_next = cv2.cvtColor(player1_next, cv2.COLOR_BGR2GRAY)
-                player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
-                q1.append(player1_next)
-                q2.append(player1_next_next)
-                if len(q1) == 5:
-                    flag1 = (np.array_equal(q1[0], q1[3]) == 0) and (np.array_equal(q2[0], q2[3]) == 0)
-                    flag2 = (np.array_equal(q1[1], q1[4]) == 1) and (np.array_equal(q2[1], q2[4]) == 1)
-
-                    if flag1 and flag2:
-                        scores.append(results)
-                        #print('tumo')
-                        field_puyos = get_field_info(img)
-                        one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
-                        #one_hot_field.append(np.eye(FIELD_LABELS)[field_puyos])
-                        fields.append(one_hot_field)
-                        next_puyos = get_next_puyo_info(img)
-                        one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
-                        #one_hot_next.append(np.eye(NEXT_LABELS)[next_puyos[0]])
-                        nexts.append(one_hot_next)
-                        action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
-                        try_action(action+1)
-                        if len(fields) == 2:
-                            reward = scores[0][0] - scores[0][1];
-                            DqnAgent.replay_buffer.add((fields[0], nexts[0], action, reward, fields[1], nexts[1]))
-
-                        print(action)
-                        q1.clear()
-                        q2.clear()
-                #print(1)
-                ret, img = capture.read()
-                end = time.time()
-                print(end - start)
-        else:
-            #print(time.time() - start)
-            ret, img = capture.read()
-            continue
-        if count == 5:
-            break
-        DqnAgent.learning()
-        ret, img = capture.read()
-
+    next = np.zeros((2,2), dtype=np.uint8)
+    for i in range(2):
+        for j in range(2):
+            next[i][j] = random.randint(0,3)
     
-if __name__ == "__main__":
-    main()
-    
+    fieldlist = []
+    fieldlist.append(field)
+    one_hot_field = np.array(np.eye(FIELD_LABELS)[fieldlist])
+    fields.append(one_hot_field)
+    nextlist = []
+    nextlist.append(next)
+    one_hot_next = np.array(np.eye(NEXT_LABELS)[next])
+    nexts.append(one_hot_next)
+    action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
+    if len(fields) == 2:
+        reward = 0;
+        DqnAgent.replay_buffer.add((fields[0], nexts[0], action, reward, fields[1], nexts[1]))
+
+import time
+start = time.time()
+DqnAgent.learning()
+print(time.time() - start)
+

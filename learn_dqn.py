@@ -37,7 +37,6 @@ def get_field_info(img):
         fields.append(init_field)
     return fields
 
-
     
 def get_next_puyo_info(img):
     player1_next = img[73 : 123 , 240 : 260]
