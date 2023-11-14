@@ -247,7 +247,7 @@ lose_hist = cv2.calcHist([lose], [2], None, [256], [0, 256])
 def lose_judge(img):
     lose_now_hist = cv2.calcHist([img[91:170, 109:209]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(lose_hist, lose_now_hist, 0)
-    if comp_percent >= 0.2:
+    if comp_percent >= 0.18:
         return True
     else:
         return False
@@ -351,25 +351,28 @@ class DQNAgent:
             #inputs_puyo2[i:i+1] = puyos_b[2]
 
             target = reward_b #　state_b盤面の時action_bを行って得た報酬
-            cd = next_state_b == np.zeros(state_b.shape).all(axis=1)
+            #cd = next_state_b == np.zeros(state_b.shape).all(axis=1)
 
-            if not cd.all(): # 次状態の盤面が全て0でないなら
+            #if not cd.all(): # 次状態の盤面が全て0でないなら
                 #next_state_b = stage2Binary(next_state_b)
-                neMap = map2batch(next_state_b)
-                retMainQs = self.qnet.predict([neMap,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0]
-                next_action = np.argmax(retMainQs)
-                target = reward_b + self.gamma * self.qnet_target.predict([next_state_b,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0][next_action]
-                if target < -1:
-                    target = -1
+            neMap = map2batch(next_state_b)
+            retMainQs = self.qnet.predict([neMap,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0]
+            next_action = np.argmax(retMainQs)
+            target = reward_b + self.gamma * self.qnet_target.predict([next_state_b.reshape(1,12,6,7),next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0][next_action]
+            if target < -1:
+                target = -1
 
-            targets[i] = self.qnet.predict([state_b,puyos_b[0].reshape(1,2,5),puyos_b[1].reshape(1,2,5)])
+            targets[i] = self.qnet.predict([state_b.reshape(1,12,6,7),puyos_b[0].reshape(1,2,5),puyos_b[1].reshape(1,2,5)])
             targets[i][action_b] = target
         self.qnet.fit([inputs,inputs_puyo0,inputs_puyo1], targets, epochs=1, verbose=0)
 
         return self.qnet
+    
+    def save_model(self):
+        self.qnet.save('learnedModel.h5')
 
 def map2batch(gameMap,batch_size = 1):
-    return gameMap.reshape((batch_size,13,6,5))
+    return gameMap.reshape((batch_size,12,6,7))
 
 direct.PAUSE = 0.02
 
@@ -512,7 +515,7 @@ def try_action(action):
     elif action == 12:
         sousa.no12()
     elif action == 13:
-        sousa.no513()
+        sousa.no13()
     elif action == 14:
         sousa.no14()
     elif action == 15:
@@ -541,6 +544,8 @@ FIELD_LABELS = 7
 NEXT_LABELS = 5
 
 def main():
+    win_count = 0
+    lose_count = 0
     field = np.zeros((12,6,7))
     next1 = np.zeros((2,5))
     next2 = np.zeros((2,5))
@@ -598,14 +603,14 @@ def main():
                         scores.append(results)
                         #print('tumo')
                         field_puyos = get_field_info(img)
-                        one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
+                        one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos[0]])
                         #one_hot_field.append(np.eye(FIELD_LABELS)[field_puyos])
                         fields.append(one_hot_field)
                         next_puyos = get_next_puyo_info(img)
                         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
                         #one_hot_next.append(np.eye(NEXT_LABELS)[next_puyos[0]])
                         nexts.append(one_hot_next)
-                        action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
+                        action = DqnAgent.get_action([one_hot_field.reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
                         try_action(action+1)
                         if len(fields) == 2:
                             reward = scores[0][0] - scores[0][1];
@@ -614,18 +619,28 @@ def main():
                         print(action)
                         q1.clear()
                         q2.clear()
+                    else:
+                        if count_time%2 == 0:
+                            direct.press('s')
                 #print(1)
                 ret, img = capture.read()
                 end = time.time()
-                print(end - start)
+                #print(end - start)
         else:
             #print(time.time() - start)
             ret, img = capture.read()
             continue
-        if count == 5:
-            break
+        if win_flag:
+            win_count+=1
+        else:
+            lose_count+=1
         DqnAgent.learning()
+        DqnAgent.qnet_target = DqnAgent.qnet
+        if count == 10:
+            break
         ret, img = capture.read()
+    DqnAgent.save_model()
+    print(str(win_count) + " " + str(lose_count))
 
     
 if __name__ == "__main__":

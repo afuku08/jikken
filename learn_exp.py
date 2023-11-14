@@ -392,6 +392,7 @@ for time in range(100):
     nextlist = []
     nextlist.append(next)
     one_hot_next = np.array(np.eye(NEXT_LABELS)[next])
+    print(one_hot_next.shape)
     nexts.append(one_hot_next)
     action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
     if len(fields) == 2:
@@ -400,6 +401,6 @@ for time in range(100):
 
 import time
 start = time.time()
-DqnAgent.learning()
+#DqnAgent.learning()
 print(time.time() - start)
 
