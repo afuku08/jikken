@@ -1,13 +1,9 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Sep 15 16:06:46 2023
-
-@author: candy
-"""
 import pydirectinput as direct
 import threading
 
-class sousa:
+direct.PAUSE = 0.005
+
+class Sousa:
         
     def right():
         direct.press('d')
@@ -21,58 +17,100 @@ class sousa:
     def left_rotation():
         direct.press('q')
         
-    def drop(self):
+    def drop():
         direct.press('s')
         
     def no1(self):
-        thread1 = threading.Thread(target=sousa.left())
-        thread2 = threading.Thread(target=sousa.left())
-        thread1.start()
-        thread2.start()
+        Sousa.left()
+        Sousa.left()
     
-    def no2():
-        sousa.left()   
+    def no2(self):
+        Sousa.left()   
         
-    def no4():
-        sousa.right()
+    def no4(self):
+        Sousa.right()
     
-    def no5():
-        sousa.right()
-        sousa.right()
+    def no5(self):
+        Sousa.right()
+        Sousa.right()
     
-    def no6():
-        sousa.right()
-        sousa.right()
-        sousa.right()
+    def no6(self):
+        Sousa.right()
+        Sousa.right()
+        Sousa.right()
         
-    def no7():
-        sousa.right_rotation()
-        sousa.right_rotation()
-        sousa.no1()
+    def no7(self):
+        Sousa.right_rotation()
+        Sousa.right_rotation()
+        Sousa.no1()
         
-    def no8():
-        sousa.right_rotation()
-        sousa.right_rotation()
-        sousa.no2()
+    def no8(self):
+        Sousa.right_rotation()
+        Sousa.right_rotation()
+        Sousa.no2()
     
-    def no9():
-        sousa.right_rotation()
-        sousa.right_rotation()
+    def no9(self):
+        Sousa.right_rotation()
+        Sousa.right_rotation()
     
-    def no10():
-        sousa.right_rotation()
-        sousa.right_rotation()
-        sousa.no4()
+    def no10(self):
+        Sousa.right_rotation()
+        Sousa.right_rotation()
+        Sousa.no4()
         
-    def no11():
-        sousa.right_rotation()
-        sousa.right_rotation()
-        sousa.no5()
+    def no11(self):
+        Sousa.right_rotation()
+        Sousa.right_rotation()
+        Sousa.no5()
         
-    def no12():
-        sousa.right_rotation()
-        sousa.right_rotation()
-        sousa.no6()
+    def no12(self):
+        Sousa.right_rotation()
+        Sousa.right_rotation()
+        Sousa.no6()
+    
+    def no13(self):
+        Sousa.right_rotation()
+    
+    def no14(self):
+        Sousa.right_rotation()
+        Sousa.right()    
         
+    def no15(self):
+        Sousa.right_rotation()
+        Sousa.right()
+        Sousa.right()
+
+    def no16(self):
+        Sousa.right_rotation()
+        Sousa.left()
+
+    def no17(self):
+        Sousa.right_rotation()
+        Sousa.left()
+        Sousa.left()
+    
+    def no18(self):
+        Sousa.left_rotation()
         
-        
+    def no19(self):
+        Sousa.left_rotation()
+        Sousa.left()
+    
+    def no20(self):
+        Sousa.left_rotation()
+        Sousa.right()
+    
+    def no21(self):
+        Sousa.left_rotation()
+        Sousa.right()
+    
+    def no22(self):
+        Sousa.left_rotation()
+        Sousa.right()
+
+import time
+sousa = Sousa()
+string = "sousa.no1()"
+start = time.time()
+exec(string)
+print(time.time() - start)

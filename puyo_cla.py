@@ -9,6 +9,7 @@ import os
 
 import cv2
 import numpy as np
+import collections
 
 
 def get_field_info(img):
@@ -67,7 +68,10 @@ def get_next_puyo_info(img):
     ]
 
     output = [player1_next, player1_next_next, player2_next, player2_next_next]
-    return output
+    player1_nexts = [player1_next, player1_next_next]
+    #player2_nexts = [player2_next, player2_next_next]
+    #output = [player1_nexts, player2_nexts]
+    return player1_nexts
 
 
 class puyo_classifier(object):
@@ -163,23 +167,35 @@ def field_edit(field):
 
 puyo_types = ["aka", "ao", "kiiro", "midori", "murasaki", "ojama", "back"]
 classifier = puyo_classifier(puyo_types)
-
+NEXT_LABELS = 5
+FIELD_LABELS = 7
 import time
 def main():
-    start = time.time()
     img = cv2.imread("banmen1.png")
-    img = cv2.convertScaleAbs(img, alpha=0.5, beta = -50)
+    #img = cv2.convertScaleAbs(img, alpha=0.5, beta = -50)
+    th, img = cv2.threshold(img, 111, 255, cv2.THRESH_BINARY)
+    fields = collections.deque([], 2)
     field_puyos = get_field_info(img)
+    one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos[0]])
+    fields.append(one_hot_field)
+    fields.append(one_hot_field)
+    #print(fields[0])
+    #print(fields[1])
+    #print(one_hot_field.ndim)
+    #print(one_hot_field.shape)
     next_puyos = get_next_puyo_info(img)
     end = time.time()
-    print(end - start)
     print(next_puyos)
+    one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
+    print(one_hot_next.shape)
+    print(one_hot_next[0].reshape(1,2,5))
+    print(one_hot_next[1].reshape(1,2,5))
 
-    fc = FieldConstructor(puyo_types)
-    player1_img = fc.make_field_construct(field_puyos[0])
-    cv2.imwrite("player1_img.jpg", player1_img)
-    player2_img = fc.make_field_construct(field_puyos[1])
-    cv2.imwrite("player2_img.jpg", player2_img)
+    #fc = FieldConstructor(puyo_types)
+    #player1_img = fc.make_field_construct(field_puyos[0])
+    #cv2.imwrite("player1_img.jpg", player1_img)
+    #player2_img = fc.make_field_construct(field_puyos[1])
+    #cv2.imwrite("player2_img.jpg", player2_img)
 
 
 if __name__ == "__main__":

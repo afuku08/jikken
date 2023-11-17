@@ -41,14 +41,14 @@ def main():
 
     if (capture.isOpened()== False):  
         print("ビデオファイルを開くとエラーが発生しました") 
-
+    count = 0
     ret, img = capture.read()
-    for i in range(50):
-    #while True:
+    #for i in range(50):
+    while True:
         win_flag = False
         lose_flag = False
-        arr1 = []
-        arr2 = []
+        #arr1 = []
+        #arr2 = []
         q1 = collections.deque([], 3)
         q2 = collections.deque([], 3)
         if start_judge(img):
@@ -57,6 +57,7 @@ def main():
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
                 if win_flag or lose_flag:
+                    count += 1
                     break
                 player1_next = img[73 : 123 , 240 : 260]
                 player1_next_next = img[132 : 172 , 259 : 274]
@@ -69,9 +70,8 @@ def main():
                     flag2 = (np.array_equal(q1[2], q1[3]) == 1) and (np.array_equal(q2[2], q2[3]) == 1)
 
                 if flag1 and flag2:
-                    print('tumo')
-                    thread = threading.Thread(target=sousa.no1())
-                    thread.start()
+                    #print('tumo')
+                    
                     q1.clear()
                     q2.clear()
                 print(1)
