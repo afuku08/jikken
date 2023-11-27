@@ -273,7 +273,7 @@ class Memory:
 
 def create_Qmodel(learning_rate = 0.1**(4)):
 
-    puyo_input = Input(shape=(12,6,7),name='puyo_net')
+    puyo_input = Input(shape=(2,12,6,7),name='puyo_net')
     x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(puyo_input)
     x = Flatten()(x)
 
@@ -329,7 +329,7 @@ class DQNAgent:
         
     def learning(self,batch_size=32):
 
-        inputs = np.zeros((batch_size,12,6,7))
+        inputs = np.zeros((batch_size,2,12,6,7))
         inputs_puyo0 = np.zeros([batch_size, 2, 5])
         inputs_puyo1 = np.zeros([batch_size, 2, 5])
         #inputs_puyo2 = np.zeros([batch_size, 2, 5])
@@ -362,7 +362,7 @@ class DQNAgent:
         return self.qnet
 
 def map2batch(gameMap,batch_size = 1):
-    return gameMap.reshape((batch_size,12,6,7))
+    return gameMap.reshape((batch_size,2,12,6,7))
 
 puyo_types = ["aka", "ao", "kiiro", "midori", "murasaki", "ojama", "back"]
 classifier = puyo_classifier(puyo_types)
@@ -375,10 +375,11 @@ NEXT_LABELS = 5
 fields = collections.deque([], 2)
 nexts = collections.deque([], 2)
 for time in range(100):
-    field = np.zeros((12,6), dtype=np.uint8)
-    for i in range(12):
-        for j in range(6):
-            field[i][j] = random.randint(0,6)
+    field = np.zeros((2,12,6), dtype=np.uint8)
+    for i in range(2):
+        for j in range(12):
+            for k in range(6):
+                field[i][j][k] = random.randint(0,6)
 
     next = np.zeros((2,2), dtype=np.uint8)
     for i in range(2):
@@ -394,7 +395,7 @@ for time in range(100):
     one_hot_next = np.array(np.eye(NEXT_LABELS)[next])
     print(one_hot_next.shape)
     nexts.append(one_hot_next)
-    action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
+    action = DqnAgent.get_action([one_hot_field[0].reshape(1,2,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
     if len(fields) == 2:
         reward = 0;
         DqnAgent.replay_buffer.add((fields[0], nexts[0], action, reward, fields[1], nexts[1]))

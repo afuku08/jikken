@@ -1,12 +1,14 @@
 import numpy as np
+import random
 
-target_vector = [[1,2,3],[3,2,1]]
-target_one_hot =[]
+FIELD_LABELS = 7
+field = np.zeros((2,12,6), dtype=np.uint8)
+for i in range(2):
+    for j in range(12):
+        for k in range(6):
+            field[i][j][k] = random.randint(0,6)
 
-n_labels = 4
-#for i in range(2):
-target_one_hot.append(np.eye(n_labels)[target_vector])
-    
-
-print(target_one_hot)
-print(type(target_one_hot))
+fieldlist = []
+fieldlist.append(field)
+one_hot_field = np.array(np.eye(FIELD_LABELS)[fieldlist])
+print(one_hot_field.shape)
