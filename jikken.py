@@ -220,14 +220,14 @@ class FieldConstructor(object):
                 init_img[grid_h : grid_h + 40, grid_w : grid_w + 40] = template_img
         return init_img
 
-go = cv2.imread('go.png')
+go = cv2.imread('go1.png')
 go_hist = cv2.calcHist([go], [2], None, [256], [0, 256])
 def start_judge(img):
     #cv2.imshow('banmen', img[180:300, 223:403])
     now_hist = cv2.calcHist([img[180:300, 223:403]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(go_hist, now_hist, 0)
     #print(comp_percent)
-    if comp_percent > 0.3:
+    if comp_percent > 0.95:
         return True
     else:
         return False
@@ -237,7 +237,7 @@ win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
 def win_judge(img):
     win_now_hist = cv2.calcHist([img[66:116, 105:208]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
-    if comp_percent >= 0.95:
+    if comp_percent >= 0.75:
         return True
     else:
         return False
@@ -247,7 +247,8 @@ lose_hist = cv2.calcHist([lose], [2], None, [256], [0, 256])
 def lose_judge(img):
     lose_now_hist = cv2.calcHist([img[91:170, 109:209]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(lose_hist, lose_now_hist, 0)
-    if comp_percent >= 0.95:
+    print(str(comp_percent))
+    if comp_percent >= 0.75:
         return True
     else:
         return False
@@ -552,16 +553,13 @@ def main():
     #ans = qnet.predict([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
     DqnAgent.get_action([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
     capture = cv2.VideoCapture(1)
-    #capture.set(cv2.CAP_PROP_FPS, 60)
 
     if (capture.isOpened()== False):  
         print("ビデオファイルを開くとエラーが発生しました") 
     count = 0
     ret, img = capture.read()
-    #for i in range(50):
     count_time = 1
     while True:
-        #start = time.time()
         win_flag = False
         lose_flag = False
         #arr1 = []
@@ -579,7 +577,6 @@ def main():
         results[1] = 0
         if start_judge(img):
             while True:
-                start = time.time()
                 count_time += 1
                 if count_time % 30 == 0:
                     get_score(img)
@@ -587,6 +584,7 @@ def main():
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
                 if win_flag or lose_flag:
+                    print("finish")
                     count += 1
                     break
                 player1_next = img[73 : 123 , 240 : 260]
@@ -601,7 +599,6 @@ def main():
 
                     if flag1 and flag2:
                         scores.append(results)
-                        #print('tumo')
                         field_puyos = get_field_info(img)
                         one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos[0]])
                         #one_hot_field.append(np.eye(FIELD_LABELS)[field_puyos])
@@ -622,12 +619,8 @@ def main():
                     else:
                         if count_time%2 == 0:
                             direct.press('s')
-                #print(1)
                 ret, img = capture.read()
-                end = time.time()
-                #print(end - start)
         else:
-            #print(time.time() - start)
             ret, img = capture.read()
             continue
         if win_flag:

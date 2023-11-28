@@ -171,7 +171,7 @@ NEXT_LABELS = 5
 FIELD_LABELS = 7
 import time
 def main():
-    img = cv2.imread("banmen1.png")
+    img = cv2.imread("banmen2.png")
     #img = cv2.convertScaleAbs(img, alpha=0.5, beta = -50)
     th, img = cv2.threshold(img, 111, 255, cv2.THRESH_BINARY)
     fields = collections.deque([], 2)
@@ -183,19 +183,19 @@ def main():
     #print(fields[1])
     #print(one_hot_field.ndim)
     #print(one_hot_field.shape)
-    next_puyos = get_next_puyo_info(img)
-    end = time.time()
-    print(next_puyos)
-    one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
-    print(one_hot_next.shape)
-    print(one_hot_next[0].reshape(1,2,5))
-    print(one_hot_next[1].reshape(1,2,5))
+    #next_puyos = get_next_puyo_info(img)
+    #end = time.time()
+    #print(next_puyos)
+    #one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
+    #print(one_hot_next.shape)
+    #print(one_hot_next[0].reshape(1,2,5))
+    #print(one_hot_next[1].reshape(1,2,5))
 
-    #fc = FieldConstructor(puyo_types)
-    #player1_img = fc.make_field_construct(field_puyos[0])
-    #cv2.imwrite("player1_img.jpg", player1_img)
-    #player2_img = fc.make_field_construct(field_puyos[1])
-    #cv2.imwrite("player2_img.jpg", player2_img)
+    fc = FieldConstructor(puyo_types)
+    player1_img = fc.make_field_construct(field_puyos[0])
+    cv2.imwrite("player1_img.jpg", player1_img)
+    player2_img = fc.make_field_construct(field_puyos[1])
+    cv2.imwrite("player2_img.jpg", player2_img)
 
 
 if __name__ == "__main__":
