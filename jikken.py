@@ -145,7 +145,7 @@ class puyo_classifier(object):
 
             for name in ["ojama", "back"]:
                 satu = np.mean(img[:, :, 1])
-                if satu < 110 and name == "back":
+                if satu < 10 and name == "back":
                     diff = 1.00
                 else:
                     template_img = self._field_template[name]
@@ -220,7 +220,7 @@ class FieldConstructor(object):
                 init_img[grid_h : grid_h + 40, grid_w : grid_w + 40] = template_img
         return init_img
 
-go = cv2.imread('go1.png')
+go = cv2.imread('go_d.png')
 go_hist = cv2.calcHist([go], [2], None, [256], [0, 256])
 def start_judge(img):
     #cv2.imshow('banmen', img[180:300, 223:403])
@@ -232,23 +232,24 @@ def start_judge(img):
     else:
         return False
 
-win = cv2.imread('win1.png')
+win = cv2.imread('win_d.png')
 win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
 def win_judge(img):
     win_now_hist = cv2.calcHist([img[66:116, 105:208]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
-    if comp_percent >= 0.75:
+    #print(str(comp_percent))
+    if comp_percent >= 0.85:
         return True
     else:
         return False
 
-lose = cv2.imread('lose1.png')
+lose = cv2.imread('lose_d.png')
 lose_hist = cv2.calcHist([lose], [2], None, [256], [0, 256])
 def lose_judge(img):
     lose_now_hist = cv2.calcHist([img[91:170, 109:209]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(lose_hist, lose_now_hist, 0)
-    print(str(comp_percent))
-    if comp_percent >= 0.75:
+    #print(str(comp_percent))
+    if comp_percent >= 0.72:
         return True
     else:
         return False
@@ -312,7 +313,7 @@ def create_Qmodel(learning_rate = 0.1**(4)):
 
 class DQNAgent:
     def __init__(self):
-        self.gamma = 0.98
+        self.gamma = 0.9
         self.lr = 0.005
         self.epsilon = 0.1
         self.buffer_size = 10000
@@ -369,8 +370,8 @@ class DQNAgent:
 
         return self.qnet
     
-    def save_model(self):
-        self.qnet.save('learnedModel.h5')
+    def save_model(self,save_model_name = 'learnedModel'):
+        self.qnet.save(save_model_name+'.h5')
 
 def map2batch(gameMap,batch_size = 1):
     return gameMap.reshape((batch_size,12,6,7))
@@ -544,6 +545,8 @@ DqnAgent = DQNAgent()
 FIELD_LABELS = 7
 NEXT_LABELS = 5
 
+PLAY_TIME = 2
+
 def main():
     win_count = 0
     lose_count = 0
@@ -558,14 +561,14 @@ def main():
         print("ビデオファイルを開くとエラーが発生しました") 
     count = 0
     ret, img = capture.read()
-    count_time = 1
+    count_time = 0
     while True:
         win_flag = False
         lose_flag = False
         #arr1 = []
         #arr2 = []
-        q1 = collections.deque([], 5)
-        q2 = collections.deque([], 5)
+        q1 = collections.deque([], 4)
+        q2 = collections.deque([], 4)
         fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         scores = collections.deque([], 2)
@@ -580,7 +583,7 @@ def main():
                 count_time += 1
                 if count_time % 30 == 0:
                     get_score(img)
-                    count_time = 1
+                    count_time = 0
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
                 if win_flag or lose_flag:
@@ -593,9 +596,9 @@ def main():
                 player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
                 q1.append(player1_next)
                 q2.append(player1_next_next)
-                if len(q1) == 5:
-                    flag1 = (np.array_equal(q1[0], q1[3]) == 0) and (np.array_equal(q2[0], q2[3]) == 0)
-                    flag2 = (np.array_equal(q1[1], q1[4]) == 1) and (np.array_equal(q2[1], q2[4]) == 1)
+                if len(q1) == 4:
+                    flag1 = (np.array_equal(q1[0], q1[2]) == 0) and (np.array_equal(q2[0], q2[2]) == 0)
+                    flag2 = (np.array_equal(q1[1], q1[3]) == 1) and (np.array_equal(q2[1], q2[3]) == 1)
 
                     if flag1 and flag2:
                         scores.append(results)
@@ -611,28 +614,31 @@ def main():
                         try_action(action+1)
                         if len(fields) == 2:
                             reward = scores[0][0] - scores[0][1];
+                            #print(reward)
                             DqnAgent.replay_buffer.add((fields[0], nexts[0], action, reward, fields[1], nexts[1]))
 
                         print(action)
                         q1.clear()
                         q2.clear()
                     else:
-                        if count_time%2 == 0:
+                        if count_time % 2 == 0:
                             direct.press('s')
                 ret, img = capture.read()
         else:
             ret, img = capture.read()
             continue
-        if win_flag:
-            win_count+=1
-        else:
-            lose_count+=1
         DqnAgent.learning()
         DqnAgent.qnet_target = DqnAgent.qnet
-        if count == 10:
+        if win_flag:
+            print('win')
+            win_count += 1
+        else:
+            print('lose')
+            lose_count += 1
+        if count == PLAY_TIME:
             break
         ret, img = capture.read()
-    DqnAgent.save_model()
+    #DqnAgent.save_model('100_Model_d')
     print(str(win_count) + " " + str(lose_count))
 
     

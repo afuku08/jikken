@@ -3,6 +3,48 @@ import numpy as np
 from collections import deque
 import collections
 import threading
+import pyocr
+import pyocr.builders
+import threading
+from PIL import Image, ImageOps
+
+tools = pyocr.get_available_tools()
+tool = tools[0]
+#builder = pyocr.builders.TextBuilder(tesseract_layout=6)
+builder = pyocr.builders.DigitBuilder(tesseract_layout=6)
+#builder = pyocr.builders.TextBuilder()
+results = ['', '']
+
+def get_score1(score1):
+    score = tool.image_to_string(score1, builder=builder)
+    if score.isdecimal():
+        results[0] = int(score)
+
+def get_score2(score2):
+    score = tool.image_to_string(score2, builder=builder)
+    if score.isdecimal():
+        results[1] = int(score)
+
+def get_score(image):
+    ret2, image = cv2.threshold(image,240,255,cv2.THRESH_BINARY)
+    image = cv2.bitwise_not(image)
+    score1 = image[395:420, 100:214]
+    score2 = image[395:420, 424:538]
+
+    SCORE1 = Image.fromarray(score1)
+    SCORE2 = Image.fromarray(score2)
+
+    thread1 = threading.Thread(target=get_score1, args=(SCORE1,))
+    thread2 = threading.Thread(target=get_score2, args=(SCORE2,))
+    thread1.start()
+    thread2.start()
+    thread1.join()
+    thread2.join()
+    #result1 = tool.image_to_string(SCORE1, builder=builder)
+    #result2 = tool.image_to_string(SCORE2, builder=builder)
+    print(results[0])
+    print(results[1])
+    
 
 go = cv2.imread('go1.png')
 go_hist = cv2.calcHist([go], [2], None, [256], [0, 256])
@@ -43,6 +85,7 @@ def main():
         print("ビデオファイルを開くとエラーが発生しました") 
     count = 0
     ret, img = capture.read()
+    count_time = 1
     #for i in range(50):
     while True:
         win_flag = False
@@ -53,7 +96,11 @@ def main():
         q2 = collections.deque([], 4)
         if start_judge(img):
             while True:
-                start = time.time()
+                #start = time.time()
+                count_time += 1
+                if count_time % 30 == 0:
+                    get_score(img)
+                    count_time = 1
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
                 if win_flag or lose_flag:
@@ -74,10 +121,10 @@ def main():
                     
                         q1.clear()
                         q2.clear()
-                print(1)
+                #print(1)
                 ret, img = capture.read()
-                end = time.time()
-                print(end - start)
+                #end = time.time()
+                #print(end - start)
         else:
             ret, img = capture.read()
             continue

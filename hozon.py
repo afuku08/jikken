@@ -5,8 +5,11 @@ capture = cv2.VideoCapture(1)
 if (capture.isOpened()== False):  
     print("ビデオファイルを開くとエラーが発生しました")
 ret, img = capture.read()
-#img = img[180:300, 223:403]
+#img = img[180:300, 223:403] #'ゴー'の位置
+#img = img[66:116, 105:208] #winの場合
+img = img[91:170, 109:209] #loseの場合
+
 #cv2.imshow("banmen", img)
 #cv2.waitKey(0)
 #cv2.destroyAllWindows()
-cv2.imwrite("banmen2.png", img)
+cv2.imwrite("lose_d.png", img)

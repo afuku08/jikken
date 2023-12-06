@@ -124,7 +124,7 @@ class puyo_classifier(object):
 
             for name in ["ojama", "back"]:
                 satu = np.mean(img[:, :, 1])
-                if satu < 110 and name == "back":
+                if satu < 10 and name == "back":
                     diff = 1.00
                 else:
                     template_img = self._field_template[name]
@@ -171,9 +171,9 @@ NEXT_LABELS = 5
 FIELD_LABELS = 7
 import time
 def main():
-    img = cv2.imread("banmen2.png")
-    #img = cv2.convertScaleAbs(img, alpha=0.5, beta = -50)
-    th, img = cv2.threshold(img, 111, 255, cv2.THRESH_BINARY)
+    img = cv2.imread("banmen3.png")
+    #img = cv2.convertScaleAbs(img, alpha=0.8, beta = -30)
+    #th, img = cv2.threshold(img, 111, 255, cv2.THRESH_BINARY)
     fields = collections.deque([], 2)
     field_puyos = get_field_info(img)
     one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos[0]])
