@@ -12,24 +12,48 @@ import numpy as np
 import collections
 
 
+puyo_cont = []
+
 def get_field_info(img):
     H = 324
     W = 132
-    h_start = 71
-    player1_field = img[h_start : h_start + H, 90 : 90 + W]
-    player2_field = img[h_start : h_start + H, 414 : 414 + W]
+    h_start = 70
+    player1_field = img[h_start : h_start + H, 91 : 91 + W]
+    player2_field = img[h_start : h_start + H, 415 : 415 + W]
     fields = []
     for field in [player1_field, player2_field]:
         init_field = np.zeros((12, 6), dtype=np.uint8)
 
         h_unit = H // 12
-        w_unit = W // 6
+        w_unit = W // 6    
+        
         for h in range(0, H, h_unit):
             for w in range(0, W, w_unit):
                 grid = field[h : h + h_unit, w : w + w_unit]
+                #cv2.imshow('banmen', grid)
+                #cv2.waitKey(0)
+                #cv2.destroyAllWindows()
                 puyo = classifier.predict(grid, template_type="field")
-                init_field[h // h_unit, w // w_unit] = puyo
-
+                #print(puyo)
+                this_puyo = -1
+                #からの場合
+                if puyo == 6:
+                    this_puyo = 0
+                #お邪魔ぷよの場合
+                if puyo == 5:
+                    this_puyo = 5
+                #通常ぷよの場合
+                else:
+                    if len(puyo_cont) == 4:
+                        this_puyo = 0
+                    result = puyo not in puyo_cont
+                    if result:
+                        puyo_cont.append(puyo)
+                        
+                    this_puyo = puyo_cont.index(puyo) + 1
+                    
+                init_field[h // h_unit, w // w_unit] = this_puyo
+                
         init_field = field_edit(init_field)
         fields.append(init_field)
     return fields
@@ -176,13 +200,15 @@ def main():
     #th, img = cv2.threshold(img, 111, 255, cv2.THRESH_BINARY)
     fields = collections.deque([], 2)
     field_puyos = get_field_info(img)
-    one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos[0]])
+    one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
     fields.append(one_hot_field)
     fields.append(one_hot_field)
     #print(fields[0])
     #print(fields[1])
     #print(one_hot_field.ndim)
-    #print(one_hot_field.shape)
+    print([len(v) for v in field_puyos])
+    print(one_hot_field.shape)
+    print(one_hot_field[0].shape)
     #next_puyos = get_next_puyo_info(img)
     #end = time.time()
     #print(next_puyos)

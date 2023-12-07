@@ -10,5 +10,7 @@ for i in range(2):
 
 fieldlist = []
 fieldlist.append(field)
-one_hot_field = np.array(np.eye(FIELD_LABELS)[fieldlist])
+one_hot_field = np.array(np.eye(FIELD_LABELS)[fieldlist[0]])
 print(one_hot_field.shape)
+one_hot_field[0].reshape(1,12,6,7)
+print(one_hot_field[0].reshape(1,12,6,7).shape)
