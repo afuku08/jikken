@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 18 12:51:39 2023
-
-@author: candy
-"""
-
 import os
 
 import cv2
@@ -18,7 +11,7 @@ def get_field_info(img):
     H = 324
     W = 132
     h_start = 70
-    player1_field = img[h_start : h_start + H, 91 : 91 + W]
+    player1_field = img[h_start : h_start + H, 90 : 90 + W]
     player2_field = img[h_start : h_start + H, 415 : 415 + W]
     fields = []
     for field in [player1_field, player2_field]:
@@ -34,21 +27,24 @@ def get_field_info(img):
                 #cv2.waitKey(0)
                 #cv2.destroyAllWindows()
                 puyo = classifier.predict(grid, template_type="field")
+                print(puyo)
                 #print(puyo)
                 this_puyo = -1
                 #からの場合
                 if puyo == 6:
                     this_puyo = 0
                 #お邪魔ぷよの場合
-                if puyo == 5:
+                elif puyo == 5:
                     this_puyo = 5
                 #通常ぷよの場合
                 else:
-                    if len(puyo_cont) == 4:
-                        this_puyo = 0
                     result = puyo not in puyo_cont
-                    if result:
-                        puyo_cont.append(puyo)
+                    if len(puyo_cont) == 4:
+                        if result:
+                            this_puyo = 0
+                    else:
+                        if result:
+                            puyo_cont.append(puyo)
                         
                     this_puyo = puyo_cont.index(puyo) + 1
                     
@@ -103,24 +99,24 @@ class puyo_classifier(object):
         self._puyo_types = puyo_types
         self._field_template = {}
         for name in self._puyo_types:
-            img = cv2.resize(cv2.imread(f"images/field/{name}.jpg"), (40, 40))
+            img = cv2.resize(cv2.imread(f"images/field/{name}.jpg"), (20, 20))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             self._field_template[name] = img
 
         self._p1_template = {}
         for name in self._puyo_types[:-2]:
-            img = cv2.resize(cv2.imread(f"images/p1/p1_{name}.jpg"), (40, 40))
+            img = cv2.resize(cv2.imread(f"images/p1/p1_{name}.jpg"), (20, 20))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             self._p1_template[name] = img
 
         self._p2_template = {}
         for name in self._puyo_types[:-2]:
-            img = cv2.resize(cv2.imread(f"images/p2/p2_{name}.jpg"), (40, 40))
+            img = cv2.resize(cv2.imread(f"images/p2/p2_{name}.jpg"), (20, 20))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             self._p2_template[name] = img
 
     def predict(self, img, template_type="field"):
-        img = cv2.resize(img, (40, 40))
+        img = cv2.resize(img, (20, 20))
         differences = []
 
         channel = 0
@@ -138,6 +134,12 @@ class puyo_classifier(object):
             template_img_hist = cv2.calcHist(
                 [template_img], [channel], None, [256], [0, 256]
             )
+            template_img_hist = cv2.calcHist(
+                [template_img], [channel], None, [256], [0, 256]
+            )
+            template_img_hist = cv2.calcHist(
+                [template_img], [channel], None, [256], [0, 256]
+            )
 
             diff = cv2.compareHist(template_img_hist, img_hist, 0)
             differences.append(diff)
@@ -145,16 +147,26 @@ class puyo_classifier(object):
         if template_type == "field":
             channel = 0
             img_hist = cv2.calcHist([img], [channel], None, [256], [0, 256])
+            img_hist = cv2.calcHist([img], [channel], None, [256], [0, 256])
+            img_hist = cv2.calcHist([img], [channel], None, [256], [0, 256])
 
             for name in ["ojama", "back"]:
                 satu = np.mean(img[:, :, 1])
-                if satu < 10 and name == "back":
+                if satu < 5 and name == "back":
                     diff = 1.00
                 else:
                     template_img = self._field_template[name]
                     template_img_hist = cv2.calcHist(
                         [template_img], [channel], None, [256], [0, 256]
                     )
+                    template_img_hist = cv2.calcHist(
+                        [template_img], [channel], None, [256], [0, 256]
+                    )
+                    template_img_hist = cv2.calcHist(
+                        [template_img], [channel], None, [256], [0, 256]
+                    )
+                    diff = cv2.compareHist(template_img_hist, img_hist, 0)
+                    diff = cv2.compareHist(template_img_hist, img_hist, 0)
                     diff = cv2.compareHist(template_img_hist, img_hist, 0)
 
                 differences.append(diff)
@@ -198,8 +210,10 @@ def main():
     img = cv2.imread("banmen3.png")
     #img = cv2.convertScaleAbs(img, alpha=0.8, beta = -30)
     #th, img = cv2.threshold(img, 111, 255, cv2.THRESH_BINARY)
-    fields = collections.deque([], 2)
+    fields = collections.deque([], 2) 
+    start = time.time()
     field_puyos = get_field_info(img)
+    print(time.time() - start)
     one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
     fields.append(one_hot_field)
     fields.append(one_hot_field)
@@ -223,6 +237,13 @@ def main():
     player2_img = fc.make_field_construct(field_puyos[1])
     cv2.imwrite("player2_img.jpg", player2_img)
 
+    '''
+    for i in range(2):
+        for j in range(12):
+            for k in range(6):
+                if field_puyos[i][j][k] == 6:
+                    print("Yes")
+    '''
 
 if __name__ == "__main__":
     main()

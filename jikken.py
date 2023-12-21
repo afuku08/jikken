@@ -26,7 +26,7 @@ def get_field_info(img):
     H = 324
     W = 132
     h_start = 70
-    player1_field = img[h_start : h_start + H, 91 : 91 + W]
+    player1_field = img[h_start : h_start + H, 90 : 90 + W]
     player2_field = img[h_start : h_start + H, 415 : 415 + W]
     fields = []
     for field in [player1_field, player2_field]:
@@ -79,20 +79,7 @@ def get_next_puyo_info(img):
         classifier.predict(i, template_type="p1") for i in player1_next_next
     ]
 
-    player2_next = img[73 : 123 , 377 : 397]
-    h, w, c = player2_next.shape
-    player2_next = player2_next[: h // 2], player2_next[h // 2 :]
-    player2_next = [classifier.predict(i, template_type="p2") for i in player2_next]
-
-    player2_next_next = img[132 : 172 , 364 : 379]
-    h, w, c = player2_next_next.shape
-    player2_next_next = player2_next_next[: h // 2], player2_next_next[h // 2 :]
-    player2_next_next = [
-        classifier.predict(i, template_type="p2") for i in player2_next_next
-    ]
     player1_nexts = [player1_next, player1_next_next]
-    #player2_nexts = [player2_next, player2_next_next]
-    #output = [player1_nexts, player2_nexts]
     return player1_nexts
 
 class puyo_classifier(object):
@@ -199,26 +186,7 @@ def get_score(image):
     #result2 = tool.image_to_string(SCORE2, builder=builder)
     #print(results[0])
     #print(results[1])
-    
-class FieldConstructor(object):
-    def __init__(self, puyo_types):
-        self._puyo_types = puyo_types
-        self._field_template = {}
-        for name in self._puyo_types:
-            img = cv2.resize(cv2.imread(f"images/field/{name}.jpg"), (40, 40))
-            self._field_template[name] = img
 
-    def make_field_construct(self, field):
-        init_img = np.zeros((480, 240, 3), dtype=np.uint8)
-        for h in range(12):
-            for w in range(6):
-                puyo = field[h, w]
-                puyo = self._puyo_types[int(puyo)]
-                template_img = self._field_template[puyo]
-                grid_h = h * 40
-                grid_w = w * 40
-                init_img[grid_h : grid_h + 40, grid_w : grid_w + 40] = template_img
-        return init_img
 
 go = cv2.imread('go_d.png')
 go_hist = cv2.calcHist([go], [2], None, [256], [0, 256])
@@ -232,13 +200,14 @@ def start_judge(img):
     else:
         return False
 
-win = cv2.imread('win_d.png')
+#相手の負けで勝ちを判定する
+win = cv2.imread('lose_d_e.png')
 win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
 def win_judge(img):
-    win_now_hist = cv2.calcHist([img[66:116, 105:208]], [2], None, [256], [0, 256])
+    win_now_hist = cv2.calcHist([img[91:170, 433:533]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
     #print(str(comp_percent))
-    if comp_percent >= 0.87:
+    if comp_percent >= 0.72:
         return True
     else:
         return False
@@ -311,7 +280,7 @@ def create_Qmodel(learning_rate = 0.1**(4)):
 
     return model
 
-def create_new_Qmodel(learning_rate = 0.1**(4)):
+def create_new_Qmodel(learning_rate = 0.1** (4)):
     my_puyo_input = Input(shape=(12,6,7),name='puyo_net')
     x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(my_puyo_input)
     x = Flatten()(x)
@@ -593,8 +562,6 @@ def main():
     while True:
         win_flag = False
         lose_flag = False
-        #arr1 = []
-        #arr2 = []
         q1 = collections.deque([], 4)
         q2 = collections.deque([], 4)
         fields = collections.deque([], 2)
