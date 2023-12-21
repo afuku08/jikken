@@ -1,6 +1,6 @@
 import cv2
 
-start = cv2.imread('go.png')
+start = cv2.imread('go1.png')
 go_hist = cv2.calcHist([start], [2], None, [256], [0, 256])
 capture = cv2.VideoCapture(1)
 

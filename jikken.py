@@ -20,20 +20,20 @@ import threading
 from PIL import Image, ImageOps
 import pydirectinput as direct
 
+puyo_cont = []
+
 def get_field_info(img):
     H = 324
     W = 132
     h_start = 70
-    player1_field = img[h_start : h_start + H, 91 : 91 + W]
+    player1_field = img[h_start : h_start + H, 90 : 90 + W]
     player2_field = img[h_start : h_start + H, 415 : 415 + W]
     fields = []
     for field in [player1_field, player2_field]:
         init_field = np.zeros((12, 6), dtype=np.uint8)
 
         h_unit = H // 12
-        w_unit = W // 6
-        
-        puyo_cont = []
+        w_unit = W // 6    
         
         for h in range(0, H, h_unit):
             for w in range(0, W, w_unit):
@@ -79,20 +79,7 @@ def get_next_puyo_info(img):
         classifier.predict(i, template_type="p1") for i in player1_next_next
     ]
 
-    player2_next = img[73 : 123 , 377 : 397]
-    h, w, c = player2_next.shape
-    player2_next = player2_next[: h // 2], player2_next[h // 2 :]
-    player2_next = [classifier.predict(i, template_type="p2") for i in player2_next]
-
-    player2_next_next = img[132 : 172 , 364 : 379]
-    h, w, c = player2_next_next.shape
-    player2_next_next = player2_next_next[: h // 2], player2_next_next[h // 2 :]
-    player2_next_next = [
-        classifier.predict(i, template_type="p2") for i in player2_next_next
-    ]
     player1_nexts = [player1_next, player1_next_next]
-    #player2_nexts = [player2_next, player2_next_next]
-    #output = [player1_nexts, player2_nexts]
     return player1_nexts
 
 class puyo_classifier(object):
@@ -145,7 +132,7 @@ class puyo_classifier(object):
 
             for name in ["ojama", "back"]:
                 satu = np.mean(img[:, :, 1])
-                if satu < 110 and name == "back":
+                if satu < 10 and name == "back":
                     diff = 1.00
                 else:
                     template_img = self._field_template[name]
@@ -199,55 +186,39 @@ def get_score(image):
     #result2 = tool.image_to_string(SCORE2, builder=builder)
     #print(results[0])
     #print(results[1])
-    
-class FieldConstructor(object):
-    def __init__(self, puyo_types):
-        self._puyo_types = puyo_types
-        self._field_template = {}
-        for name in self._puyo_types:
-            img = cv2.resize(cv2.imread(f"images/field/{name}.jpg"), (40, 40))
-            self._field_template[name] = img
 
-    def make_field_construct(self, field):
-        init_img = np.zeros((480, 240, 3), dtype=np.uint8)
-        for h in range(12):
-            for w in range(6):
-                puyo = field[h, w]
-                puyo = self._puyo_types[int(puyo)]
-                template_img = self._field_template[puyo]
-                grid_h = h * 40
-                grid_w = w * 40
-                init_img[grid_h : grid_h + 40, grid_w : grid_w + 40] = template_img
-        return init_img
 
-go = cv2.imread('go.png')
+go = cv2.imread('go_d.png')
 go_hist = cv2.calcHist([go], [2], None, [256], [0, 256])
 def start_judge(img):
     #cv2.imshow('banmen', img[180:300, 223:403])
     now_hist = cv2.calcHist([img[180:300, 223:403]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(go_hist, now_hist, 0)
     #print(comp_percent)
-    if comp_percent > 0.3:
+    if comp_percent > 0.95:
         return True
     else:
         return False
 
-win = cv2.imread('win.png')
+#相手の負けで勝ちを判定する
+win = cv2.imread('lose_d_e.png')
 win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
 def win_judge(img):
-    win_now_hist = cv2.calcHist([img[66:116, 105:208]], [2], None, [256], [0, 256])
+    win_now_hist = cv2.calcHist([img[91:170, 433:533]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
-    if comp_percent >= 0.6:
+    #print(str(comp_percent))
+    if comp_percent >= 0.72:
         return True
     else:
         return False
 
-lose = cv2.imread('lose.png')
+lose = cv2.imread('lose_d.png')
 lose_hist = cv2.calcHist([lose], [2], None, [256], [0, 256])
 def lose_judge(img):
     lose_now_hist = cv2.calcHist([img[91:170, 109:209]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(lose_hist, lose_now_hist, 0)
-    if comp_percent >= 0.18:
+    #print(str(comp_percent))
+    if comp_percent >= 0.72:
         return True
     else:
         return False
@@ -309,9 +280,34 @@ def create_Qmodel(learning_rate = 0.1**(4)):
 
     return model
 
+def create_new_Qmodel(learning_rate = 0.1** (4)):
+    my_puyo_input = Input(shape=(12,6,7),name='puyo_net')
+    x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(my_puyo_input)
+    x = Flatten()(x)
+
+    enemy_puyo_input = Input(shape=(12,6,7),name='enemy_net')
+    y = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(enemy_puyo_input)
+    y = Flatten()(y)
+
+    nowpuyo_input = Input(shape=(2, 5),name='nowpuyo_input')
+    nextpuyo_input = Input(shape=(2, 5), name='nextpuyo_input')
+    a = Flatten()(nowpuyo_input)
+    b = Flatten()(nextpuyo_input)
+
+    x = keras.layers.concatenate([x,y,a,b],axis=1)
+    x = Dense(1000,activation='relu')(x)
+    x = Dense(400, activation='relu')(x)
+    output = Dense(22,activation='linear',name='output')(x)
+    optimizer = Adam(lr=learning_rate)
+    model = Model(inputs=[my_puyo_input,enemy_puyo_input,nowpuyo_input,nextpuyo_input],outputs=output)
+    model.compile(optimizer=optimizer,loss='mean_squared_error')
+    #plot_model(model, to_file='model.png',show_shapes=True)
+
+    return model
+
 class DQNAgent:
     def __init__(self):
-        self.gamma = 0.98
+        self.gamma = 0.9
         self.lr = 0.005
         self.epsilon = 0.1
         self.buffer_size = 10000
@@ -319,8 +315,8 @@ class DQNAgent:
         self.action_size = 22
 
         self.replay_buffer = Memory(self.buffer_size, self.batch_size)
-        self.qnet = create_Qmodel(self.lr)
-        self.qnet_target = create_Qmodel(self.lr)
+        self.qnet = create_new_Qmodel(self.lr)
+        self.qnet_target = create_new_Qmodel(self.lr)
     
     def sync_qnet(self):
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -337,39 +333,42 @@ class DQNAgent:
             return
 
         inputs = np.zeros((batch_size,12,6,7))
+        enemy_inputs = np.zeros((batch_size,12,6,7))
         inputs_puyo0 = np.zeros([batch_size, 2, 5])
         inputs_puyo1 = np.zeros([batch_size, 2, 5])
         #inputs_puyo2 = np.zeros([batch_size, 2, 5])
         targets = np.zeros((batch_size,self.action_size))
         mini_batch = self.replay_buffer.sample(batch_size)
 
-        for i,(state_b,puyos_b,action_b,reward_b,next_state_b,next_puyos_b) in enumerate(mini_batch):
+        for i,(state_b,enemy_state_b,puyos_b,action_b,reward_b,next_state_b,next_enemy_state_b,next_puyos_b) in enumerate(mini_batch):
             #state_b = stage2Binary(next_state_b)
             inputs[i:i+1] = state_b #　盤面
+            enemy_inputs[i:i+1] = enemy_state_b
             inputs_puyo0[i:i+1] = puyos_b[0]
             inputs_puyo1[i:i+1] = puyos_b[1]
             #inputs_puyo2[i:i+1] = puyos_b[2]
 
-            target = reward_b #　state_b盤面の時action_bを行って得た報酬
+            target = reward_b # state_b盤面の時action_bを行って得た報酬
             #cd = next_state_b == np.zeros(state_b.shape).all(axis=1)
 
             #if not cd.all(): # 次状態の盤面が全て0でないなら
                 #next_state_b = stage2Binary(next_state_b)
             neMap = map2batch(next_state_b)
-            retMainQs = self.qnet.predict([neMap,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0]
+            enemy_neMap = map2batch(next_enemy_state_b)
+            retMainQs = self.qnet.predict([neMap,enemy_neMap,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0]
             next_action = np.argmax(retMainQs)
-            target = reward_b + self.gamma * self.qnet_target.predict([next_state_b.reshape(1,12,6,7),next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0][next_action]
+            target = reward_b + self.gamma * self.qnet_target.predict([next_state_b.reshape(1,12,6,7),next_enemy_state_b.reshape(1,12,6,7),next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0][next_action]
             if target < -1:
                 target = -1
 
-            targets[i] = self.qnet.predict([state_b.reshape(1,12,6,7),puyos_b[0].reshape(1,2,5),puyos_b[1].reshape(1,2,5)])
+            targets[i] = self.qnet.predict([state_b.reshape(1,12,6,7),enemy_state_b.reshape(1,12,6,7),puyos_b[0].reshape(1,2,5),puyos_b[1].reshape(1,2,5)])
             targets[i][action_b] = target
-        self.qnet.fit([inputs,inputs_puyo0,inputs_puyo1], targets, epochs=1, verbose=0)
+        self.qnet.fit([inputs,enemy_inputs,inputs_puyo0,inputs_puyo1], targets, epochs=1, verbose=0)
 
         return self.qnet
     
-    def save_model(self):
-        self.qnet.save('learnedModel.h5')
+    def save_model(self,save_model_name = 'learnedModel'):
+        self.qnet.save(save_model_name+'.h5')
 
 def map2batch(gameMap,batch_size = 1):
     return gameMap.reshape((batch_size,12,6,7))
@@ -543,6 +542,8 @@ DqnAgent = DQNAgent()
 FIELD_LABELS = 7
 NEXT_LABELS = 5
 
+EPISODE = 100
+
 def main():
     win_count = 0
     lose_count = 0
@@ -550,24 +551,19 @@ def main():
     next1 = np.zeros((2,5))
     next2 = np.zeros((2,5))
     #ans = qnet.predict([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
-    DqnAgent.get_action([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
+    DqnAgent.get_action([field.reshape(1,12,6,7), field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
     capture = cv2.VideoCapture(1)
-    #capture.set(cv2.CAP_PROP_FPS, 60)
 
     if (capture.isOpened()== False):  
         print("ビデオファイルを開くとエラーが発生しました") 
     count = 0
     ret, img = capture.read()
-    #for i in range(50):
-    count_time = 1
+    count_time = 0
     while True:
-        #start = time.time()
         win_flag = False
         lose_flag = False
-        #arr1 = []
-        #arr2 = []
-        q1 = collections.deque([], 5)
-        q2 = collections.deque([], 5)
+        q1 = collections.deque([], 4)
+        q2 = collections.deque([], 4)
         fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         scores = collections.deque([], 2)
@@ -579,14 +575,14 @@ def main():
         results[1] = 0
         if start_judge(img):
             while True:
-                start = time.time()
                 count_time += 1
                 if count_time % 30 == 0:
                     get_score(img)
-                    count_time = 1
+                    count_time = 0
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
                 if win_flag or lose_flag:
+                    print("finish")
                     count += 1
                     break
                 player1_next = img[73 : 123 , 240 : 260]
@@ -595,51 +591,50 @@ def main():
                 player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
                 q1.append(player1_next)
                 q2.append(player1_next_next)
-                if len(q1) == 5:
-                    flag1 = (np.array_equal(q1[0], q1[3]) == 0) and (np.array_equal(q2[0], q2[3]) == 0)
-                    flag2 = (np.array_equal(q1[1], q1[4]) == 1) and (np.array_equal(q2[1], q2[4]) == 1)
+                if len(q1) == 4:
+                    flag1 = (np.array_equal(q1[0], q1[2]) == 0) and (np.array_equal(q2[0], q2[2]) == 0)
+                    flag2 = (np.array_equal(q1[1], q1[3]) == 1) and (np.array_equal(q2[1], q2[3]) == 1)
 
                     if flag1 and flag2:
                         scores.append(results)
-                        #print('tumo')
                         field_puyos = get_field_info(img)
-                        one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos[0]])
+                        one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
                         #one_hot_field.append(np.eye(FIELD_LABELS)[field_puyos])
                         fields.append(one_hot_field)
                         next_puyos = get_next_puyo_info(img)
                         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
                         #one_hot_next.append(np.eye(NEXT_LABELS)[next_puyos[0]])
                         nexts.append(one_hot_next)
-                        action = DqnAgent.get_action([one_hot_field.reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
+                        action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_field[1].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
                         try_action(action+1)
                         if len(fields) == 2:
                             reward = scores[0][0] - scores[0][1];
-                            DqnAgent.replay_buffer.add((fields[0], nexts[0], action, reward, fields[1], nexts[1]))
+                            #print(reward)
+                            DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
 
                         print(action)
                         q1.clear()
                         q2.clear()
                     else:
-                        if count_time%2 == 0:
+                        if count_time % 2 == 0:
                             direct.press('s')
-                #print(1)
                 ret, img = capture.read()
-                end = time.time()
-                #print(end - start)
         else:
-            #print(time.time() - start)
             ret, img = capture.read()
             continue
-        if win_flag:
-            win_count+=1
-        else:
-            lose_count+=1
         DqnAgent.learning()
         DqnAgent.qnet_target = DqnAgent.qnet
-        if count == 10:
+        if win_flag:
+            print('win')
+            win_count += 1
+        else:
+            print('lose')
+            lose_count += 1
+        if count == EPISODE:
             break
         ret, img = capture.read()
-    DqnAgent.save_model()
+    direct.press('esc')
+    DqnAgent.save_model('100_newModel_d')
     print(str(win_count) + " " + str(lose_count))
 
     

@@ -273,7 +273,7 @@ class Memory:
 
 def create_Qmodel(learning_rate = 0.1**(4)):
 
-    puyo_input = Input(shape=(12,6,7),name='puyo_net')
+    puyo_input = Input(shape=(2,12,6,7),name='puyo_net')
     x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(puyo_input)
     x = Flatten()(x)
 
@@ -304,6 +304,32 @@ def create_Qmodel(learning_rate = 0.1**(4)):
 
     return model
 
+from keras.utils import plot_model
+def create_new_Qmodel(learning_rate = 0.1**(4)):
+    my_puyo_input = Input(shape=(12,6,7),name='puyo_net')
+    x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(my_puyo_input)
+    x = Flatten()(x)
+
+    enemy_puyo_input = Input(shape=(12,6,7),name='enemy_net')
+    y = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(enemy_puyo_input)
+    y = Flatten()(y)
+
+    nowpuyo_input = Input(shape=(2, 5),name='nowpuyo_input')
+    nextpuyo_input = Input(shape=(2, 5), name='nextpuyo_input')
+    a = Flatten()(nowpuyo_input)
+    b = Flatten()(nextpuyo_input)
+
+    x = keras.layers.concatenate([x,y,a,b],axis=1)
+    x = Dense(1000,activation='relu')(x)
+    x = Dense(400, activation='relu')(x)
+    output = Dense(22,activation='linear',name='output')(x)
+    optimizer = Adam(lr=learning_rate)
+    model = Model(inputs=[my_puyo_input,enemy_puyo_input,nowpuyo_input,nextpuyo_input],outputs=output)
+    model.compile(optimizer=optimizer,loss='mean_squared_error')
+    plot_model(model, to_file='model.png',show_shapes=True)
+
+    return model
+
 class DQNAgent:
     def __init__(self):
         self.gamma = 0.98
@@ -314,8 +340,8 @@ class DQNAgent:
         self.action_size = 22
 
         self.replay_buffer = Memory(self.buffer_size, self.batch_size)
-        self.qnet = create_Qmodel(self.learning_rate)
-        self.qnet_target = create_Qmodel(self.learning_rate)
+        self.qnet = create_new_Qmodel(self.learning_rate)
+        self.qnet_target = create_new_Qmodel(self.learning_rate)
     
     def sync_qnet(self):
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -330,34 +356,37 @@ class DQNAgent:
     def learning(self,batch_size=32):
 
         inputs = np.zeros((batch_size,12,6,7))
+        enemy_inputs = np.zeros((batch_size,12,6,7))
         inputs_puyo0 = np.zeros([batch_size, 2, 5])
         inputs_puyo1 = np.zeros([batch_size, 2, 5])
         #inputs_puyo2 = np.zeros([batch_size, 2, 5])
         targets = np.zeros((batch_size,self.action_size))
         mini_batch = self.replay_buffer.sample(batch_size)
 
-        for i,(state_b,puyos_b,action_b,reward_b,next_state_b,next_puyos_b) in enumerate(mini_batch):
+        for i,(state_b,enemy_state_b,puyos_b,action_b,reward_b,next_state_b,next_enemy_state_b,next_puyos_b) in enumerate(mini_batch):
             #state_b = stage2Binary(next_state_b)
             inputs[i:i+1] = state_b #　盤面
+            enemy_inputs[i:i+1] = enemy_state_b
             inputs_puyo0[i:i+1] = puyos_b[0]
             inputs_puyo1[i:i+1] = puyos_b[1]
             #inputs_puyo2[i:i+1] = puyos_b[2]
 
-            target = reward_b #　state_b盤面の時action_bを行って得た報酬
-            cd = next_state_b == np.zeros(state_b.shape).all(axis=1)
+            target = reward_b # state_b盤面の時action_bを行って得た報酬
+            #cd = next_state_b == np.zeros(state_b.shape).all(axis=1)
 
-            if not cd.all(): # 次状態の盤面が全て0でないなら
+            #if not cd.all(): # 次状態の盤面が全て0でないなら
                 #next_state_b = stage2Binary(next_state_b)
-                neMap = map2batch(next_state_b)
-                retMainQs = self.qnet.predict([neMap,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0]
-                next_action = np.argmax(retMainQs)
-                target = reward_b + self.gamma * self.qnet_target.predict([next_state_b,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0][next_action]
-                if target < -1:
-                    target = -1
+            neMap = map2batch(next_state_b)
+            enemy_neMap = map2batch(next_enemy_state_b)
+            retMainQs = self.qnet.predict([neMap,enemy_neMap,next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0]
+            next_action = np.argmax(retMainQs)
+            target = reward_b + self.gamma * self.qnet_target.predict([next_state_b.reshape(1,12,6,7),next_enemy_state_b.reshape(1,12,6,7),next_puyos_b[0].reshape(1,2,5),next_puyos_b[1].reshape(1,2,5)])[0][next_action]
+            if target < -1:
+                target = -1
 
-            targets[i] = self.qnet.predict([state_b,puyos_b[0].reshape(1,2,5),puyos_b[1].reshape(1,2,5)])
+            targets[i] = self.qnet.predict([state_b.reshape(1,12,6,7),enemy_state_b.reshape(1,12,6,7),puyos_b[0].reshape(1,2,5),puyos_b[1].reshape(1,2,5)])
             targets[i][action_b] = target
-        self.qnet.fit([inputs,inputs_puyo0,inputs_puyo1], targets, epochs=1, verbose=0)
+        self.qnet.fit([inputs,enemy_inputs,inputs_puyo0,inputs_puyo1], targets, epochs=1, verbose=0)
 
         return self.qnet
 
@@ -375,10 +404,11 @@ NEXT_LABELS = 5
 fields = collections.deque([], 2)
 nexts = collections.deque([], 2)
 for time in range(100):
-    field = np.zeros((12,6), dtype=np.uint8)
-    for i in range(12):
-        for j in range(6):
-            field[i][j] = random.randint(0,6)
+    field = np.zeros((2,12,6), dtype=np.uint8)
+    for i in range(2):
+        for j in range(12):
+            for k in range(6):
+                field[i][j][k] = random.randint(0,6)
 
     next = np.zeros((2,2), dtype=np.uint8)
     for i in range(2):
@@ -387,20 +417,21 @@ for time in range(100):
     
     fieldlist = []
     fieldlist.append(field)
-    one_hot_field = np.array(np.eye(FIELD_LABELS)[fieldlist])
+    one_hot_field = np.array(np.eye(FIELD_LABELS)[fieldlist[0]])
+    #print(one_hot_field.shape)
     fields.append(one_hot_field)
     nextlist = []
     nextlist.append(next)
     one_hot_next = np.array(np.eye(NEXT_LABELS)[next])
-    print(one_hot_next.shape)
+    #print(one_hot_next.shape)
     nexts.append(one_hot_next)
-    action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
+    action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,7), one_hot_field[1].reshape(1,12,6,7), one_hot_next[0].reshape(1,2,5), one_hot_next[1].reshape(1,2,5)])
     if len(fields) == 2:
         reward = 0;
-        DqnAgent.replay_buffer.add((fields[0], nexts[0], action, reward, fields[1], nexts[1]))
+        DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
 
 import time
 start = time.time()
-#DqnAgent.learning()
+DqnAgent.learning()
 print(time.time() - start)
 

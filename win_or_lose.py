@@ -3,23 +3,23 @@ import numpy as np
 import time
 
 
-win = cv2.imread('win.png')
+win = cv2.imread('win1.png')
 win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
 def win_judge(img):
     win_now_hist = cv2.calcHist([img[66:116, 105:208]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
-    if comp_percent >= 0.6:
+    if comp_percent >= 0.95:
         return True
     else:
         return False
 
-lose = cv2.imread('lose.png')
+lose = cv2.imread('lose1.png')
 lose_hist = cv2.calcHist([lose], [2], None, [256], [0, 256])
 def lose_judge(img):
     lose_now_hist = cv2.calcHist([img[91:170, 109:209]], [2], None, [256], [0, 256])
     comp_percent = cv2.compareHist(lose_hist, lose_now_hist, 0)
     print(str(comp_percent))
-    if comp_percent >= 0.2:
+    if comp_percent >= 0.95:
         return True
     else:
         return False

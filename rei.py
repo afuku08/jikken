@@ -1,26 +1,13 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Sep 18 12:53:01 2023
+H = 324
+W = 132
 
-@author: candy
-"""
+h_unit = H // 12
+w_unit = W // 6    
+        
+count = 0
+for h in range(0, H, h_unit):
+    for w in range(0, W, w_unit):
+        print(str(h) + ":" + str(h+h_unit) + " " + str(w) + ":" + str(w+w_unit))
+        count += 1
 
-import cv2
-import time
-
-win = cv2.imread('win.png')
-win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
-def win_judge(img):
-    win_now_hist = cv2.calcHist([img[66:116, 105:208]], [2], None, [256], [0, 256])
-    comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
-    if comp_percent > 0.6:
-        return True
-    else:
-        return False
-
-start = time.time()
-img = cv2.imread('banmen1.png')
-flag = win_judge(img)
-end = time.time()
-print(end - start)
-
+print(count)
