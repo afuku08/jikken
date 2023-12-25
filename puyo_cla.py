@@ -46,6 +46,11 @@ def get_field_info(img):
                 init_field[h // h_unit, w // w_unit] = this_puyo
                 
         init_field = field_edit(init_field)
+        for i in range(11):
+            for j in range(6):
+                if init_field[i+1][j] == 0:
+                    init_field[i][j] = 0
+
         fields.append(init_field)
     return fields
 
@@ -198,6 +203,56 @@ def field_edit(field):
     return field
 
 
+dodailist = []
+def read_dodai():
+    dodai = ["gtr", "ngtr", "yayoi", "da"]
+
+    for name in dodai:
+        f = open('./dodai/%s.csv' % name, 'r')
+        data = f.read()
+        data = data.replace("\n", "")
+        test_str = list(data)
+        test_str = np.array(test_str)
+        test_str = test_str.reshape(4,6)
+        test_str = change_int(test_str)
+        dodailist.append(test_str)
+        for i in range(3):
+            test_str = change_color(test_str)
+            dodailist.append(test_str)
+        f.close()
+
+def change_color(banmen):
+    for i in range(4):
+        for j in range(6):
+            now = banmen[i][j]
+            if now == 0:
+                continue
+            now += 1
+            if now == 5:
+                now = 1
+            banmen[i][j] = now
+    return banmen
+
+def change_int(banmen):
+    ban = np.zeros((4,6))
+    for i in range(4):
+        for j in range(6):
+            ban[i][j] = int(banmen[i][j])
+
+    return ban
+
+def get_dodai_reward(banmen):
+    banmen = np.array(banmen)
+    print(banmen)
+    ruiji = 0
+    for dodai in dodailist:
+        tmp = np.count_nonzero(banmen == dodai) / dodai.size
+        #print(str(tmp))
+        ruiji = max(ruiji, tmp)
+    
+    return ruiji
+
+
 puyo_types = ["aka", "ao", "kiiro", "midori", "murasaki", "ojama", "back"]
 classifier = puyo_classifier(puyo_types)
 NEXT_LABELS = 4
@@ -209,7 +264,12 @@ def main():
     start = time.time()
     field_puyos = get_field_info(img)
     print(time.time() - start)
+    print(field_puyos)
     print(np.unique(field_puyos))
+    #print(field_puyos[0][8:])
+    read_dodai()
+    reward = get_dodai_reward(field_puyos[0][8:])
+    print(reward)
     one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
     fields.append(one_hot_field)
     fields.append(one_hot_field)

@@ -19,6 +19,7 @@ import pyocr.builders
 import threading
 from PIL import Image, ImageOps
 import pydirectinput as direct
+import matplotlib.pyplot as plt
 
 puyo_cont = []
 
@@ -61,6 +62,11 @@ def get_field_info(img):
                 init_field[h // h_unit, w // w_unit] = this_puyo
                 
         init_field = field_edit(init_field)
+        for i in range(11):
+            for j in range(6):
+                if init_field[i+1][j] == 0:
+                    init_field[i][j] = 0
+
         fields.append(init_field)
     return fields
     
@@ -565,6 +571,54 @@ def try_action(action):
     elif action == 22:
         sousa.no22()
 
+dodailist = []
+def read_dodai():
+    dodai = ["gtr", "ngtr", "yayoi", "da"]
+
+    for name in dodai:
+        f = open('./dodai/%s.csv' % name, 'r')
+        data = f.read()
+        data = data.replace("\n", "")
+        test_str = list(data)
+        test_str = np.array(test_str)
+        test_str = test_str.reshape(4,6)
+        test_str = change_int(test_str)
+        dodailist.append(test_str)
+        for i in range(3):
+            test_str = change_color(test_str)
+            dodailist.append(test_str)
+        f.close()
+
+def change_color(banmen):
+    for i in range(4):
+        for j in range(6):
+            now = banmen[i][j]
+            if now == 0:
+                continue
+            now += 1
+            if now == 5:
+                now = 1
+            banmen[i][j] = now
+    return banmen
+
+def change_int(banmen):
+    ban = np.zeros((4,6))
+    for i in range(4):
+        for j in range(6):
+            ban[i][j] = int(banmen[i][j])
+
+    return ban
+
+def get_dodai_reward(banmen):
+    banmen = np.array(banmen)
+    ruiji = 0
+    for dodai in dodailist:
+        tmp = np.count_nonzero(banmen == dodai) / dodai.size
+        print(str(tmp))
+        ruiji = max(ruiji, tmp)
+    
+    return ruiji
+
 puyo_types = ["aka", "ao", "kiiro", "midori", "murasaki", "ojama", "back"]
 classifier = puyo_classifier(puyo_types)
 import time
@@ -581,22 +635,25 @@ def main():
     field = np.zeros((12,6,6))
     next1 = np.zeros((2,4))
     next2 = np.zeros((2,4))
-    #ans = qnet.predict([field.reshape(1,12,6,7), next1.reshape(1,2,5), next2.reshape(1,2,5)])
     DqnAgent.get_action([field.reshape(1,12,6,6), field.reshape(1,12,6,6), next1.reshape(1,2,4), next2.reshape(1,2,4)])
     capture = cv2.VideoCapture(1)
 
     if (capture.isOpened()== False):  
         print("ビデオファイルを開くとエラーが発生しました") 
     count = 0
+    read_dodai()
     ret, img = capture.read()
     count_time = 0
+    reward_list = []
     print("Ready")
     while True:
+        reward_sum = 0
         win_flag = False
         lose_flag = False
         q1 = collections.deque([], 4)
         q2 = collections.deque([], 4)
         fields = collections.deque([], 2)
+        dodai_fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         scores = collections.deque([], 2)
         #next2s = collections.deque([], 2)
@@ -609,16 +666,17 @@ def main():
             while True:
                 count_time += 1
                 if count_time % 30 == 0:
-                    get_score(img)
+                    #get_score(img)
                     count_time = 0
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
                 if win_flag or lose_flag:
+                    puyo_cont.clear()
                     print("finish")
                     count += 1
                     break
-                player1_next = img[73 : 123 , 240 : 260]
-                player1_next_next = img[132 : 172 , 259 : 274]
+                player1_next = img[85 : 110 , 240 : 260]
+                player1_next_next = img[142 : 162 , 259 : 274]
                 player1_next = cv2.cvtColor(player1_next, cv2.COLOR_BGR2GRAY)
                 player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
                 q1.append(player1_next)
@@ -630,6 +688,7 @@ def main():
                     if flag1 and flag2:
                         scores.append(results)
                         field_puyos = get_field_info(img)
+                        dodai_fields.append(field_puyos[0][8:])
                         one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
                         #one_hot_field.append(np.eye(FIELD_LABELS)[field_puyos])
                         fields.append(one_hot_field)
@@ -640,8 +699,9 @@ def main():
                         action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,6), one_hot_field[1].reshape(1,12,6,6), one_hot_next[0].reshape(1,2,4), one_hot_next[1].reshape(1,2,4)])
                         try_action(action+1)
                         if len(fields) == 2:
-                            reward = scores[0][0] - scores[0][1];
-                            #print(reward)
+                            #reward = scores[0][0] - scores[0][1] #スコアの場合
+                            reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
+                            reward_sum += reward
                             DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
 
                         print(action)
@@ -656,6 +716,7 @@ def main():
             continue
         DqnAgent.learning()
         DqnAgent.qnet_target = DqnAgent.qnet
+        reward_list.append(reward_sum)
         if win_flag:
             print('win')
             win_count += 1
@@ -665,9 +726,11 @@ def main():
         if count == EPISODE:
             break
         ret, img = capture.read()
+    time.sleep(10)
     direct.press('esc')
-    DqnAgent.save_model('100_newModel_d')
+    DqnAgent.save_model('100_newModel_dodai_d')
     print(str(win_count) + " " + str(lose_count))
+    plt.plot(reward_list)
 
     
 if __name__ == "__main__":
