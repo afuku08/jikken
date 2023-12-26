@@ -53,11 +53,13 @@ def get_field_info(img):
                     if len(puyo_cont) == 4:
                         if result:
                             this_puyo = 0
+                        else:
+                            this_puyo = puyo_cont.index(puyo) + 1
                     else:
                         if result:
                             puyo_cont.append(puyo)
                         
-                    this_puyo = puyo_cont.index(puyo) + 1
+                        this_puyo = puyo_cont.index(puyo) + 1
                     
                 init_field[h // h_unit, w // w_unit] = this_puyo
                 
@@ -80,11 +82,13 @@ def get_next_puyo_info(img):
         if len(puyo_cont) == 4:
             if result:
                 player1_next[i] = 0
+            else:
+                player1_next[i] = puyo_cont.index(player1_next[i])
         else:
             if result:
                 puyo_cont.append(player1_next[i])
                         
-        player1_next[i] = puyo_cont.index(player1_next[i])
+            player1_next[i] = puyo_cont.index(player1_next[i])
 
     player1_next_next = img[132 : 172 , 259 : 274]
     h, w, c = player1_next_next.shape
@@ -98,10 +102,12 @@ def get_next_puyo_info(img):
             if result:
                 player1_next_next[i] = 0
             else:
-                if result:
-                    puyo_cont.append(player1_next_next[i])
+                player1_next_next[i] = puyo_cont.index(player1_next_next[i])
+        else:
+            if result:
+                puyo_cont.append(player1_next_next[i])
                         
-        player1_next_next[i] = puyo_cont.index(player1_next_next[i])
+            player1_next_next[i] = puyo_cont.index(player1_next_next[i])
 
     player1_nexts = [player1_next, player1_next_next]
     return player1_nexts
@@ -593,7 +599,7 @@ def change_color(banmen):
     for i in range(4):
         for j in range(6):
             now = banmen[i][j]
-            if now == 0:
+            if now == 7:
                 continue
             now += 1
             if now == 5:
@@ -614,7 +620,7 @@ def get_dodai_reward(banmen):
     ruiji = 0
     for dodai in dodailist:
         tmp = np.count_nonzero(banmen == dodai) / dodai.size
-        print(str(tmp))
+        #print(str(tmp))
         ruiji = max(ruiji, tmp)
     
     return ruiji
@@ -699,7 +705,9 @@ def main():
                         action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,6), one_hot_field[1].reshape(1,12,6,6), one_hot_next[0].reshape(1,2,4), one_hot_next[1].reshape(1,2,4)])
                         try_action(action+1)
                         if len(fields) == 2:
-                            #reward = scores[0][0] - scores[0][1] #スコアの場合
+                            #treward = scores[0][0] - scores[0][1] #スコアの場合
+                            #ts = str(treward)
+                            #reward = treward / 10**len(ts)
                             reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
                             reward_sum += reward
                             DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
@@ -728,9 +736,10 @@ def main():
         ret, img = capture.read()
     time.sleep(10)
     direct.press('esc')
-    DqnAgent.save_model('100_newModel_dodai_d')
+    DqnAgent.save_model('100_newModel_dodai_d2')
     print(str(win_count) + " " + str(lose_count))
     plt.plot(reward_list)
+    plt.show()
 
     
 if __name__ == "__main__":
