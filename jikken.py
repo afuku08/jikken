@@ -231,24 +231,36 @@ def get_score(image):
     #print(results[1])
 
 
+channel_b = 0
+channel_g = 1
+
 go = cv2.imread('go_d.png')
-go_hist = cv2.calcHist([go], [2], None, [256], [0, 256])
+go_hist_b = cv2.calcHist([go], [channel_b], None, [256], [0, 256])
+go_hist_g = cv2.calcHist([go], [channel_g], None, [256], [0, 256])
 def start_judge(img):
     #cv2.imshow('banmen', img[180:300, 223:403])
-    now_hist = cv2.calcHist([img[180:300, 223:403]], [2], None, [256], [0, 256])
-    comp_percent = cv2.compareHist(go_hist, now_hist, 0)
+    now_hist_b = cv2.calcHist([img[180:300, 223:403]], [channel_b], None, [256], [0, 256])
+    now_hist_g = cv2.calcHist([img[180:300, 223:403]], [channel_g], None, [256], [0, 256])
+
+    comp_percent_b = cv2.compareHist(go_hist_b, now_hist_b, 0)
+    comp_percent_g = cv2.compareHist(go_hist_g, now_hist_g, 0)
+    comp_percent = (comp_percent_b + comp_percent_g) / 2
     #print(comp_percent)
-    if comp_percent > 0.95:
+    if comp_percent > 0.9:
         return True
     else:
         return False
 
 #相手の負けで勝ちを判定する
 win = cv2.imread('lose_d_e.png')
-win_hist = cv2.calcHist([win], [2], None, [256], [0, 256])
+win_hist_b = cv2.calcHist([win], [channel_b], None, [256], [0, 256])
+win_hist_g = cv2.calcHist([win], [channel_g], None, [256], [0, 256])
 def win_judge(img):
-    win_now_hist = cv2.calcHist([img[91:170, 433:533]], [2], None, [256], [0, 256])
-    comp_percent = cv2.compareHist(win_hist, win_now_hist, 0)
+    win_now_hist_b = cv2.calcHist([img[91:170, 433:533]], [channel_b], None, [256], [0, 256])
+    win_now_hist_g = cv2.calcHist([img[91:170, 433:533]], [channel_g], None, [256], [0, 256])
+    comp_percent_b = cv2.compareHist(win_hist_b, win_now_hist_b, 0)
+    comp_percent_g = cv2.compareHist(win_hist_g, win_now_hist_g, 0)
+    comp_percent = (comp_percent_b + comp_percent_g) / 2
     #print(str(comp_percent))
     if comp_percent >= 0.72:
         return True
@@ -256,10 +268,14 @@ def win_judge(img):
         return False
 
 lose = cv2.imread('lose_d.png')
-lose_hist = cv2.calcHist([lose], [2], None, [256], [0, 256])
+lose_hist_b = cv2.calcHist([lose], [channel_b], None, [256], [0, 256])
+lose_hist_g = cv2.calcHist([lose], [channel_g], None, [256], [0, 256])
 def lose_judge(img):
-    lose_now_hist = cv2.calcHist([img[91:170, 109:209]], [2], None, [256], [0, 256])
-    comp_percent = cv2.compareHist(lose_hist, lose_now_hist, 0)
+    lose_now_hist_b = cv2.calcHist([img[91:170, 109:209]], [channel_b], None, [256], [0, 256])
+    lose_now_hist_g = cv2.calcHist([img[91:170, 109:209]], [channel_g], None, [256], [0, 256])
+    comp_percent_b = cv2.compareHist(lose_hist_b, lose_now_hist_b, 0)
+    comp_percent_g = cv2.compareHist(lose_hist_g, lose_now_hist_g, 0)
+    comp_percent = (comp_percent_b + comp_percent_g) / 2
     #print(str(comp_percent))
     if comp_percent >= 0.72:
         return True
@@ -358,8 +374,12 @@ class DQNAgent:
         self.action_size = 22
 
         self.replay_buffer = Memory(self.buffer_size, self.batch_size)
-        self.qnet = create_new_Qmodel(self.lr)
-        self.qnet_target = create_new_Qmodel(self.lr)
+        #新しいモデルの場合
+        #self.qnet = create_new_Qmodel(self.lr)
+        #self.qnet_target = create_new_Qmodel(self.lr)
+        #セーブしたモデルの使用
+        self.qnet = load_model('./900_newModel_dodai_d2.h5')
+        self.qnet_target = load_model('./900_newModel_dodai_d2.h5')
     
     def sync_qnet(self):
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -664,7 +684,8 @@ def main():
         scores = collections.deque([], 2)
         #next2s = collections.deque([], 2)
         next_puyos = get_next_puyo_info(img)
-        nexts.append(next_puyos[0])
+        one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
+        nexts.append(one_hot_next)
         #next2s.append(next_puyos[1])
         results[0] = 0
         results[1] = 0
@@ -702,7 +723,7 @@ def main():
                         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
                         #one_hot_next.append(np.eye(NEXT_LABELS)[next_puyos[0]])
                         nexts.append(one_hot_next)
-                        action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,6), one_hot_field[1].reshape(1,12,6,6), one_hot_next[0].reshape(1,2,4), one_hot_next[1].reshape(1,2,4)])
+                        action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,6), one_hot_field[1].reshape(1,12,6,6), nexts[0][0].reshape(1,2,4), nexts[0][1].reshape(1,2,4)])
                         try_action(action+1)
                         if len(fields) == 2:
                             #treward = scores[0][0] - scores[0][1] #スコアの場合
@@ -716,7 +737,7 @@ def main():
                         q1.clear()
                         q2.clear()
                     else:
-                        if count_time % 2 == 0:
+                        if (np.array_equal(q1[1], q1[3]) == 1) and (np.array_equal(q2[1], q2[3]) == 1):
                             direct.press('s')
                 ret, img = capture.read()
         else:
@@ -733,10 +754,12 @@ def main():
             lose_count += 1
         if count == EPISODE:
             break
+
+
         ret, img = capture.read()
     time.sleep(10)
     direct.press('esc')
-    DqnAgent.save_model('100_newModel_dodai_d2')
+    DqnAgent.save_model('1000_newModel_dodai_d2')
     print(str(win_count) + " " + str(lose_count))
     plt.plot(reward_list)
     plt.show()
