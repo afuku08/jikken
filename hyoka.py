@@ -5,8 +5,8 @@ from tensorflow.keras.layers import Input
 from keras.models import Model
 from keras.models import load_model
 from tensorflow.keras.layers import concatenate,add
-from keras.layers.core import Dense, Dropout, Activation, Flatten,Reshape,Permute# ƒ‚ƒWƒ…[ƒ‹‚ÌƒCƒ“ƒ|[ƒg
-from tensorflow.keras.layers import Conv2D,Convolution2D, MaxPooling2D,Cropping2D,Conv2DTranspose# CNN‘wAPooling‘w‚ÌƒCƒ“ƒ|[ƒg
+from keras.layers.core import Dense, Dropout, Activation, Flatten,Reshape,Permute# ãƒ¢ã‚¸ãƒ¥ãƒ¼ãƒ«ã®ã‚¤ãƒ³ãƒãƒ¼ãƒˆ
+from tensorflow.keras.layers import Conv2D,Convolution2D, MaxPooling2D,Cropping2D,Conv2DTranspose# CNNå±¤ã€Poolingå±¤ã®ã‚¤ãƒ³ãƒãƒ¼ãƒˆ
 from keras.optimizers import Adam
 from keras.utils import plot_model
 from collections import deque
@@ -41,13 +41,13 @@ def get_field_info(img):
                 grid = field[h : h + h_unit, w : w + w_unit]
                 puyo = classifier.predict(grid, template_type="field")
                 this_puyo = -1
-                #‚©‚ç‚Ìê‡
+                #ã‹ã‚‰ã®å ´åˆ
                 if puyo == 6:
                     this_puyo = 0
-                #‚¨×–‚‚Õ‚æ‚Ìê‡
+                #ãŠé‚ªé­”ã·ã‚ˆã®å ´åˆ
                 elif puyo == 5:
                     this_puyo = 5
-                #’Êí‚Õ‚æ‚Ìê‡
+                #é€šå¸¸ã·ã‚ˆã®å ´åˆ
                 else:
                     result = puyo not in puyo_cont
                     if len(puyo_cont) == 4:
@@ -214,7 +214,7 @@ def start_judge(img):
     else:
         return False
 
-#‘Šè‚Ì•‰‚¯‚ÅŸ‚¿‚ğ”»’è‚·‚é
+#ç›¸æ‰‹ã®è² ã‘ã§å‹ã¡ã‚’åˆ¤å®šã™ã‚‹
 win = cv2.imread('lose_d_e.png')
 win_hist_b = cv2.calcHist([win], [channel_b], None, [256], [0, 256])
 win_hist_g = cv2.calcHist([win], [channel_g], None, [256], [0, 256])
@@ -255,7 +255,7 @@ class DQNAgent:
         self.batch_size = 32
         self.action_size = 22
 
-        #ƒZ[ƒu‚µ‚½ƒ‚ƒfƒ‹‚Ìg—p
+        #ã‚»ãƒ¼ãƒ–ã—ãŸãƒ¢ãƒ‡ãƒ«ã®ä½¿ç”¨
         self.qnet = load_model('./1000_newModel_dodai_d2.h5')
 
     def get_action(self, state):
@@ -447,15 +447,12 @@ def main():
     capture = cv2.VideoCapture(1)
 
     if (capture.isOpened()== False):  
-        print("ƒrƒfƒIƒtƒ@ƒCƒ‹‚ğŠJ‚­‚ÆƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½") 
+        print("ãƒ“ãƒ‡ã‚ªãƒ•ã‚¡ã‚¤ãƒ«ã‚’é–‹ãã¨ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸ") 
     count = 0
-    read_dodai()
     ret, img = capture.read()
     count_time = 0
-    reward_list = []
     print("Ready")
     while True:
-        reward_sum = 0
         win_flag = False
         lose_flag = False
         q1 = collections.deque([], 4)
@@ -464,13 +461,9 @@ def main():
         dodai_fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         scores = collections.deque([], 2)
-        #next2s = collections.deque([], 2)
         next_puyos = get_next_puyo_info(img)
         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
         nexts.append(one_hot_next)
-        #next2s.append(next_puyos[1])
-        results[0] = 0
-        results[1] = 0
         if start_judge(img):
             while True:
                 count_time += 1
@@ -495,7 +488,6 @@ def main():
                     flag2 = (np.array_equal(q1[1], q1[3]) == 1) and (np.array_equal(q2[1], q2[3]) == 1)
 
                     if flag1 and flag2:
-                        scores.append(results)
                         field_puyos = get_field_info(img)
                         dodai_fields.append(field_puyos[0][8:])
                         one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
@@ -517,8 +509,6 @@ def main():
             ret, img = capture.read()
             continue
 
-        DqnAgent.qnet_target = DqnAgent.qnet
-        reward_list.append(reward_sum)
         if win_flag:
             print('win')
             win_count += 1
@@ -534,8 +524,6 @@ def main():
     direct.press('esc')
 
     print(str(win_count) + " " + str(lose_count))
-    plt.plot(reward_list)
-    plt.show()
 
     
 if __name__ == "__main__":
