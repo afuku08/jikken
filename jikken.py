@@ -306,42 +306,10 @@ class Memory:
         next_state = np.stack([x[3] for x in data])
         return state, action, reward, next_state
 
-def create_Qmodel(learning_rate =  2 * (0.1**(4))):
-
-    puyo_input = Input(shape=(12,6,6),name='puyo_net')
-    x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(puyo_input)
-    x = Flatten()(x)
-
-    y = Conv2D(filters=1,kernel_size = (1,6),strides=(1,1),activation='relu',padding='valid')(puyo_input)
-    y = Flatten()(y)
-    nowpuyo_input = Input(shape=(2, 4),name='nowpuyo_input')
-    nextpuyo_input = Input(shape=(2, 4), name='nextpuyo_input')
-
-    z = Conv2D(filters=16,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(puyo_input)
-    z = Conv2D(filters=16,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(z)
-    z = MaxPooling2D()(z)
-    z = Conv2D(filters=32,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(z)
-    z = Conv2D(filters=32,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(z)
-    z = MaxPooling2D()(z)   
-    z = Flatten()(z)
-
-    a = Flatten()(nowpuyo_input)
-    b = Flatten()(nextpuyo_input)
-
-    x = keras.layers.concatenate([x,y,z,a,b],axis=1)
-    x = Dense(1000,activation='relu')(x)
-    x = Dense(400, activation='relu')(x)
-    output = Dense(22,activation='linear',name='output')(x)
-    optimizer = Adam(lr=learning_rate)
-    model = Model(inputs=[puyo_input,nowpuyo_input,nextpuyo_input],outputs=output)
-    model.compile(optimizer=optimizer,loss='mean_squared_error')
-    #plot_model(model, to_file='model.png',show_shapes=True)
-
-    return model
 
 def create_new_Qmodel(learning_rate = 0.1** (4)):
     my_puyo_input = Input(shape=(12,6,6),name='puyo_net')
-    #x = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(my_puyo_input)
+    x = Conv2D(filters=16,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(my_puyo_input)
     x = Flatten()(my_puyo_input)
 
     enemy_puyo_input = Input(shape=(12,6,6),name='enemy_net')
@@ -378,8 +346,9 @@ class DQNAgent:
         #self.qnet = create_new_Qmodel(self.lr)
         #self.qnet_target = create_new_Qmodel(self.lr)
         #セーブしたモデルの使用
-        self.qnet = load_model('./900_newModel_dodai_d2.h5')
-        self.qnet_target = load_model('./900_newModel_dodai_d2.h5')
+        model_path = './200_model.h5'
+        self.qnet = load_model(model_path)
+        self.qnet_target = load_model(model_path)
     
     def sync_qnet(self):
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -599,10 +568,10 @@ def try_action(action):
 
 dodailist = []
 def read_dodai():
-    dodai = ["gtr", "ngtr", "yayoi", "da"]
+    dodai = ["yoko2"]
 
     for name in dodai:
-        f = open('./dodai/%s.csv' % name, 'r')
+        f = open('./dodai/use/%s.csv' % name, 'r')
         data = f.read()
         data = data.replace("\n", "")
         test_str = list(data)
@@ -654,6 +623,7 @@ FIELD_LABELS = 6
 NEXT_LABELS = 4
 
 EPISODE = 100
+SAVE_MODEL_NAME = '300_model'
 
 def main():
     win_count = 0
@@ -674,6 +644,7 @@ def main():
     print("Ready")
     while True:
         reward_sum = 0
+        turn = 0
         win_flag = False
         lose_flag = False
         q1 = collections.deque([], 4)
@@ -682,18 +653,16 @@ def main():
         dodai_fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         scores = collections.deque([], 2)
-        #next2s = collections.deque([], 2)
         next_puyos = get_next_puyo_info(img)
         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
         nexts.append(one_hot_next)
-        #next2s.append(next_puyos[1])
         results[0] = 0
         results[1] = 0
         if start_judge(img):
             while True:
                 count_time += 1
-                if count_time % 30 == 0:
-                    #get_score(img)
+                if count_time % 60 == 0:
+                    get_score(img)
                     count_time = 0
                 win_flag = win_judge(img)
                 lose_flag = lose_judge(img)
@@ -717,21 +686,22 @@ def main():
                         field_puyos = get_field_info(img)
                         dodai_fields.append(field_puyos[0][8:])
                         one_hot_field = np.array(np.eye(FIELD_LABELS)[field_puyos])
-                        #one_hot_field.append(np.eye(FIELD_LABELS)[field_puyos])
                         fields.append(one_hot_field)
                         next_puyos = get_next_puyo_info(img)
                         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
-                        #one_hot_next.append(np.eye(NEXT_LABELS)[next_puyos[0]])
                         nexts.append(one_hot_next)
                         action = DqnAgent.get_action([one_hot_field[0].reshape(1,12,6,6), one_hot_field[1].reshape(1,12,6,6), nexts[0][0].reshape(1,2,4), nexts[0][1].reshape(1,2,4)])
                         try_action(action+1)
+                        turn += 1
                         if len(fields) == 2:
-                            #treward = scores[0][0] - scores[0][1] #スコアの場合
-                            #ts = str(treward)
-                            #reward = treward / 10**len(ts)
-                            reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
-                            reward_sum += reward
-                            DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
+                            if turn <= 15:
+                                reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
+                                reward_sum += reward
+                                DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
+                            else:
+                                treward = scores[0][0] - scores[0][1] #スコアの場合
+                                ts = str(treward)
+                                reward = treward / 10**len(ts)
 
                         print(action)
                         q1.clear()
@@ -759,7 +729,7 @@ def main():
         ret, img = capture.read()
     time.sleep(10)
     direct.press('esc')
-    DqnAgent.save_model('1000_newModel_dodai_d2')
+    DqnAgent.save_model(SAVE_MODEL_NAME)
     print(str(win_count) + " " + str(lose_count))
     plt.plot(reward_list)
     plt.show()
