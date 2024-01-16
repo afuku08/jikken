@@ -23,6 +23,11 @@ import matplotlib.pyplot as plt
 
 puyo_cont = []
 
+USE_MODEL_PATH = './300_model.h5'
+USE_NEW_MODEL = False
+EPISODE = 100
+SAVE_MODEL_NAME = '400_model'
+
 def get_field_info(img):
     H = 324
     W = 132
@@ -343,12 +348,13 @@ class DQNAgent:
 
         self.replay_buffer = Memory(self.buffer_size, self.batch_size)
         #新しいモデルの場合
-        #self.qnet = create_new_Qmodel(self.lr)
-        #self.qnet_target = create_new_Qmodel(self.lr)
+        if USE_NEW_MODEL:
+            self.qnet = create_new_Qmodel(self.lr)
+            self.qnet_target = create_new_Qmodel(self.lr)
+        else:
         #セーブしたモデルの使用
-        model_path = './200_model.h5'
-        self.qnet = load_model(model_path)
-        self.qnet_target = load_model(model_path)
+            self.qnet = load_model(USE_MODEL_PATH)
+            self.qnet_target = load_model(USE_MODEL_PATH)
     
     def sync_qnet(self):
         self.qnet_target = copy.deepcopy(self.qnet)
@@ -368,7 +374,6 @@ class DQNAgent:
         enemy_inputs = np.zeros((batch_size,12,6,6))
         inputs_puyo0 = np.zeros([batch_size, 2, 4])
         inputs_puyo1 = np.zeros([batch_size, 2, 4])
-        #inputs_puyo2 = np.zeros([batch_size, 2, 5])
         targets = np.zeros((batch_size,self.action_size))
         mini_batch = self.replay_buffer.sample(batch_size)
 
@@ -622,9 +627,6 @@ DqnAgent = DQNAgent()
 FIELD_LABELS = 6
 NEXT_LABELS = 4
 
-EPISODE = 100
-SAVE_MODEL_NAME = '300_model'
-
 def main():
     win_count = 0
     lose_count = 0
@@ -671,8 +673,8 @@ def main():
                     print("finish")
                     count += 1
                     break
-                player1_next = img[85 : 110 , 240 : 260]
-                player1_next_next = img[142 : 162 , 259 : 274]
+                player1_next = img[73 : 98 , 240 : 260]
+                player1_next_next = img[152 : 172 , 259 : 274]
                 player1_next = cv2.cvtColor(player1_next, cv2.COLOR_BGR2GRAY)
                 player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
                 q1.append(player1_next)
@@ -724,6 +726,19 @@ def main():
             lose_count += 1
         if count == EPISODE:
             break
+        if count % 1 == 0:
+            if win_count == 100 or lose_count == 100:
+                time.sleep(20)
+                direct.press('enter')
+                time.sleep(5)
+                direct.press('enter')
+            else:
+                time.sleep(10)
+                direct.press('esc')
+                time.sleep(2)
+                direct.press('down')
+                time.sleep(2)
+                direct.press('enter')
 
 
         ret, img = capture.read()
