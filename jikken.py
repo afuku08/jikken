@@ -707,6 +707,7 @@ def main():
                                 treward = scores[0][0] - scores[0][1] #スコアの場合
                                 ts = str(treward)
                                 reward = treward / 10**len(ts)
+                                reward_sum += reward
 
                             DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
 
