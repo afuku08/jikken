@@ -20,13 +20,13 @@ import threading
 from PIL import Image, ImageOps
 import pydirectinput as direct
 import matplotlib.pyplot as plt
+import csv
 
 puyo_cont = []
 
-USE_MODEL_PATH = './300_model.h5'
-USE_NEW_MODEL = False
-EPISODE = 100
-SAVE_MODEL_NAME = '400_model'
+USE_MODEL_PATH = ''
+USE_NEW_MODEL = True
+EPISODE = 500
 
 def get_field_info(img):
     H = 324
@@ -326,7 +326,12 @@ def create_new_Qmodel(learning_rate = 0.1** (4)):
     a = Flatten()(nowpuyo_input)
     b = Flatten()(nextpuyo_input)
 
-    x = keras.layers.concatenate([x,y,a,b],axis=1)
+    x = keras.layers.concatenate([x,a,b], axis=1)
+    x = Dense(1000,activation='relu')(x)
+    x = Dense(500,activation='relu')(x)
+
+
+    x = keras.layers.concatenate([x,y],axis=1)
     x = Dense(1000,activation='relu')(x)
     x = Dense(400, activation='relu')(x)
     output = Dense(22,activation='linear',name='output')(x)
@@ -386,10 +391,7 @@ class DQNAgent:
             #inputs_puyo2[i:i+1] = puyos_b[2]
 
             target = reward_b # state_b盤面の時action_bを行って得た報酬
-            #cd = next_state_b == np.zeros(state_b.shape).all(axis=1)
 
-            #if not cd.all(): # 次状態の盤面が全て0でないなら
-                #next_state_b = stage2Binary(next_state_b)
             neMap = map2batch(next_state_b)
             enemy_neMap = map2batch(next_enemy_state_b)
             retMainQs = self.qnet.predict([neMap,enemy_neMap,next_puyos_b[0].reshape(1,2,4),next_puyos_b[1].reshape(1,2,4)])[0]
@@ -410,7 +412,7 @@ class DQNAgent:
 def map2batch(gameMap,batch_size = 1):
     return gameMap.reshape((batch_size,12,6,6))
 
-direct.PAUSE = 0.02
+direct.PAUSE = 0.025
 
 class Sousa:
         
@@ -673,8 +675,8 @@ def main():
                     print("finish")
                     count += 1
                     break
-                player1_next = img[73 : 98 , 240 : 260]
-                player1_next_next = img[152 : 172 , 259 : 274]
+                player1_next = img[73 : 93 , 240 : 260]
+                player1_next_next = img[157 : 172 , 259 : 274]
                 player1_next = cv2.cvtColor(player1_next, cv2.COLOR_BGR2GRAY)
                 player1_next_next = cv2.cvtColor(player1_next_next, cv2.COLOR_BGR2GRAY)
                 q1.append(player1_next)
@@ -696,14 +698,16 @@ def main():
                         try_action(action+1)
                         turn += 1
                         if len(fields) == 2:
-                            if turn <= 15:
+                            if turn <= 20:
                                 reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
                                 reward_sum += reward
-                                DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
+                                
                             else:
                                 treward = scores[0][0] - scores[0][1] #スコアの場合
                                 ts = str(treward)
                                 reward = treward / 10**len(ts)
+
+                            DqnAgent.replay_buffer.add((fields[0][0], fields[0][1], nexts[0], action, reward, fields[1][0], fields[1][1], nexts[1]))
 
                         print(action)
                         q1.clear()
@@ -726,28 +730,50 @@ def main():
             lose_count += 1
         if count == EPISODE:
             break
-        if count % 1 == 0:
+        if count % 100 == 0:
+            save_model_name = str(count) + '_model'
+            DqnAgent.save_model(save_model_name)
+
+            csv_path = r"./reward_" + str(count) + ".csv"
+            with open(csv_path, 'w', newline='') as file:
+                writer = csv.writer(file)
+                for i in reward_list:
+                    writer.writerow([i])
+
             if win_count == 100 or lose_count == 100:
+                win_count = 0
+                lose_count = 0
                 time.sleep(20)
                 direct.press('enter')
                 time.sleep(5)
                 direct.press('enter')
+                
             else:
+                win_count = 0
+                lose_count = 0
                 time.sleep(10)
                 direct.press('esc')
                 time.sleep(2)
                 direct.press('down')
                 time.sleep(2)
                 direct.press('enter')
+                        
 
 
         ret, img = capture.read()
     time.sleep(10)
     direct.press('esc')
-    DqnAgent.save_model(SAVE_MODEL_NAME)
     print(str(win_count) + " " + str(lose_count))
-    plt.plot(reward_list)
-    plt.show()
+
+    save_model_name = str(count) + '_model'
+    DqnAgent.save_model(save_model_name)
+
+    csv_path = r"./reward_" + str(count) + ".csv"
+    with open(csv_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        for i in reward_list:
+            writer.writerow([i])
+
 
     
 if __name__ == "__main__":
