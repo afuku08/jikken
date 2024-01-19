@@ -626,6 +626,7 @@ classifier = puyo_classifier(puyo_types)
 import time
 
 DqnAgent = DQNAgent()
+DqnAgent.epsilon = 0.9
 FIELD_LABELS = 6
 NEXT_LABELS = 4
 
@@ -730,6 +731,11 @@ def main():
             lose_count += 1
         if count == EPISODE:
             break
+
+        if count % 50 == 0:
+            if DqnAgent.epsilon > 0.1:
+                DqnAgent.epsilon -= 0.1
+
         if count % 100 == 0:
             save_model_name = str(count) + '_model'
             DqnAgent.save_model(save_model_name)
