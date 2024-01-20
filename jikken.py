@@ -384,11 +384,10 @@ class DQNAgent:
 
         for i,(state_b,enemy_state_b,puyos_b,action_b,reward_b,next_state_b,next_enemy_state_b,next_puyos_b) in enumerate(mini_batch):
             #state_b = stage2Binary(next_state_b)
-            inputs[i:i+1] = state_b #　盤面
+            inputs[i:i+1] = state_b #盤面
             enemy_inputs[i:i+1] = enemy_state_b
             inputs_puyo0[i:i+1] = puyos_b[0]
             inputs_puyo1[i:i+1] = puyos_b[1]
-            #inputs_puyo2[i:i+1] = puyos_b[2]
 
             target = reward_b # state_b盤面の時action_bを行って得た報酬
 
@@ -412,7 +411,7 @@ class DQNAgent:
 def map2batch(gameMap,batch_size = 1):
     return gameMap.reshape((batch_size,12,6,6))
 
-direct.PAUSE = 0.025
+direct.PAUSE = 0.02
 
 class Sousa:
         
@@ -615,9 +614,15 @@ def get_dodai_reward(banmen):
     banmen = np.array(banmen)
     ruiji = 0
     for dodai in dodailist:
-        tmp = np.count_nonzero(banmen == dodai) / dodai.size
-        #print(str(tmp))
-        ruiji = max(ruiji, tmp)
+        count = 0
+        ans_count = 0
+        for i in range(4):
+            for j in range(6):
+                if dodai[i][j] != 7:
+                    count += 1
+                    if banmen[i][j] == dodai[i][j]:
+                        ans_count += 1
+        ruiji = max(ruiji, (ans_count/count))
     
     return ruiji
 
@@ -699,7 +704,7 @@ def main():
                         try_action(action+1)
                         turn += 1
                         if len(fields) == 2:
-                            if turn <= 20:
+                            if turn <= 18:
                                 reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
                                 reward_sum += reward
                                 
@@ -733,7 +738,7 @@ def main():
         if count == EPISODE:
             break
 
-        if count % 50 == 0:
+        if count % 35 == 0:
             if DqnAgent.epsilon > 0.1:
                 DqnAgent.epsilon -= 0.1
 

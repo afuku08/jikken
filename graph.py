@@ -2,7 +2,7 @@ import csv
 import matplotlib.pyplot as plt
 
 #csvファイルを指定
-MyPath = './reward_csv/reward_500.csv'
+MyPath = './reward_500.csv'
 
 #csvファイルを読み込み
 rows = []
