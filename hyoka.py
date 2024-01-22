@@ -256,7 +256,7 @@ class DQNAgent:
         self.action_size = 22
 
         #セーブしたモデルの使用
-        self.qnet = load_model('./1000_newModel_dodai_d2.h5')
+        self.qnet = load_model('./500_model.h5')
 
     def get_action(self, state):
         qs = self.qnet.predict(state)
@@ -435,7 +435,7 @@ DqnAgent = DQNAgent()
 FIELD_LABELS = 6
 NEXT_LABELS = 4
 
-EPISODE = 100
+EPISODE = 50
 
 def main():
     win_count = 0

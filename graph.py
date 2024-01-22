@@ -18,4 +18,6 @@ for r in rows:
 
 #print(float_list)
 plt.plot(float_list)
+plt.xlabel("エピソード数",fontname="MS Gothic")
+plt.ylabel("報酬",fontname="MS Gothic")
 plt.show()

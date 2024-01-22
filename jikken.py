@@ -344,7 +344,7 @@ def create_new_Qmodel(learning_rate = 0.1** (4)):
 
 class DQNAgent:
     def __init__(self):
-        self.gamma = 0.95
+        self.gamma = 0.8
         self.lr = 0.0002
         self.epsilon = 0.1
         self.buffer_size = 10000
@@ -755,7 +755,7 @@ def main():
             if win_count == 100 or lose_count == 100:
                 win_count = 0
                 lose_count = 0
-                time.sleep(20)
+                time.sleep(10)
                 direct.press('enter')
                 time.sleep(5)
                 direct.press('enter')
@@ -763,7 +763,7 @@ def main():
             else:
                 win_count = 0
                 lose_count = 0
-                time.sleep(10)
+                time.sleep(8)
                 direct.press('esc')
                 time.sleep(2)
                 direct.press('down')
