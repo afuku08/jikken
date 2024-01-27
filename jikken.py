@@ -314,11 +314,13 @@ class Memory:
 
 def create_new_Qmodel(learning_rate = 0.1** (4)):
     my_puyo_input = Input(shape=(12,6,6),name='puyo_net')
-    x = Conv2D(filters=16,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(my_puyo_input)
-    x = Flatten()(my_puyo_input)
+    x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(my_puyo_input)
+    x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(my_puyo_input)
+    x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(my_puyo_input)
+    x = Flatten()(x)
 
     enemy_puyo_input = Input(shape=(12,6,6),name='enemy_net')
-    #y = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(enemy_puyo_input)
+    y = enemy_puyo_input
     y = Flatten()(enemy_puyo_input)
 
     nowpuyo_input = Input(shape=(2, 4),name='nowpuyo_input')
@@ -327,14 +329,17 @@ def create_new_Qmodel(learning_rate = 0.1** (4)):
     b = Flatten()(nextpuyo_input)
 
     x = keras.layers.concatenate([x,a,b], axis=1)
-    x = Dense(1000,activation='relu')(x)
+    #x = Conv2D(filters=16,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(my_puyo_input)
+    #x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(x)
+    #x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(x)
     x = Dense(500,activation='relu')(x)
 
 
     x = keras.layers.concatenate([x,y],axis=1)
-    x = Dense(1000,activation='relu')(x)
+    #x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(x)
+    #x = Conv2D(filters=128,kernel_size = (3,3),activation='relu',)(x)
     x = Dense(400, activation='relu')(x)
-    output = Dense(22,activation='linear',name='output')(x)
+    output = Dense(22,activation='softmax',name='output')(x)
     optimizer = Adam(lr=learning_rate)
     model = Model(inputs=[my_puyo_input,enemy_puyo_input,nowpuyo_input,nextpuyo_input],outputs=output)
     model.compile(optimizer=optimizer,loss='mean_squared_error')
@@ -641,7 +646,8 @@ def main():
     field = np.zeros((12,6,6))
     next1 = np.zeros((2,4))
     next2 = np.zeros((2,4))
-    DqnAgent.get_action([field.reshape(1,12,6,6), field.reshape(1,12,6,6), next1.reshape(1,2,4), next2.reshape(1,2,4)])
+    tmp = DqnAgent.get_action([field.reshape(1,12,6,6), field.reshape(1,12,6,6), next1.reshape(1,2,4), next2.reshape(1,2,4)])
+    print(tmp)
     capture = cv2.VideoCapture(1)
 
     if (capture.isOpened()== False):  
