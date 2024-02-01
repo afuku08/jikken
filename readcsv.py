@@ -5,7 +5,7 @@ def change_color(banmen):
     for i in range(4):
         for j in range(6):
             now = banmen[i][j]
-            if now == 0:
+            if now == 7:
                 continue
             now += 1
             if now == 5:
@@ -25,9 +25,15 @@ def get_dodai_reward(banmen):
     banmen = np.array(banmen)
     ruiji = 0
     for dodai in dodailist:
-        tmp = np.count_nonzero(banmen == dodai) / dodai.size
-        print(str(tmp))
-        ruiji = max(ruiji, tmp)
+        count = 0
+        ans_count = 0
+        for i in range(4):
+            for j in range(6):
+                if dodai[i][j] != 7:
+                    count += 1
+                    if banmen[i][j] == dodai[i][j]:
+                        ans_count += 1
+        ruiji = max(ruiji, (ans_count/count))
     
     return ruiji
 
@@ -35,7 +41,7 @@ def get_dodai_reward(banmen):
 dodailist = []
 
 for name in dodai:
-    f = open('./dodai/%s.csv' % name, 'r')
+    f = open('./dodai/kari/%s.csv' % name, 'r')
     data = f.read()
     data = data.replace("\n", "")
     test_str = list(data)
@@ -50,6 +56,12 @@ for name in dodai:
 
 import time
 start = time.time()
-get_dodai_reward(np.zeros((4,6)))
+num = np.zeros((4,6))
+for i in range(4):
+    for j in range(6):
+        num[i][j] = 1
+
+reward = get_dodai_reward(num)
+print(reward)
 print(time.time() - start)
 

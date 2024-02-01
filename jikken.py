@@ -314,27 +314,28 @@ class Memory:
 
 def create_new_Qmodel(learning_rate = 0.1** (4)):
     my_puyo_input = Input(shape=(12,6,6),name='puyo_net')
-    x = Conv2D(filters=16,kernel_size = (2,2),strides=(1,1),activation='relu',padding='same')(my_puyo_input)
-    x = Flatten()(my_puyo_input)
+    x = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(my_puyo_input)
+    x = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(x)
+    x = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(x)
+    x = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(x)
+    x = Flatten()(x)
 
     enemy_puyo_input = Input(shape=(12,6,6),name='enemy_net')
-    #y = Conv2D(filters=1,kernel_size = (12,1),strides=(1,1),activation='relu',padding='valid')(enemy_puyo_input)
-    y = Flatten()(enemy_puyo_input)
+    y = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(enemy_puyo_input)
+    y = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(y)
+    y = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(y)
+    y = Conv2D(filters=256,kernel_size = (2,2),padding='same',activation='relu',)(y)
+    y = Flatten()(y)
 
     nowpuyo_input = Input(shape=(2, 4),name='nowpuyo_input')
     nextpuyo_input = Input(shape=(2, 4), name='nextpuyo_input')
     a = Flatten()(nowpuyo_input)
     b = Flatten()(nextpuyo_input)
 
-    x = keras.layers.concatenate([x,a,b], axis=1)
-    x = Dense(1000,activation='relu')(x)
-    x = Dense(500,activation='relu')(x)
+    x = keras.layers.concatenate([x,y,a,b], axis=1)
 
-
-    x = keras.layers.concatenate([x,y],axis=1)
-    x = Dense(1000,activation='relu')(x)
     x = Dense(400, activation='relu')(x)
-    output = Dense(22,activation='linear',name='output')(x)
+    output = Dense(22,activation='softmax',name='output')(x)
     optimizer = Adam(lr=learning_rate)
     model = Model(inputs=[my_puyo_input,enemy_puyo_input,nowpuyo_input,nextpuyo_input],outputs=output)
     model.compile(optimizer=optimizer,loss='mean_squared_error')
@@ -344,7 +345,7 @@ def create_new_Qmodel(learning_rate = 0.1** (4)):
 
 class DQNAgent:
     def __init__(self):
-        self.gamma = 0.95
+        self.gamma = 0.8
         self.lr = 0.0002
         self.epsilon = 0.1
         self.buffer_size = 10000
@@ -384,11 +385,10 @@ class DQNAgent:
 
         for i,(state_b,enemy_state_b,puyos_b,action_b,reward_b,next_state_b,next_enemy_state_b,next_puyos_b) in enumerate(mini_batch):
             #state_b = stage2Binary(next_state_b)
-            inputs[i:i+1] = state_b #　盤面
+            inputs[i:i+1] = state_b #盤面
             enemy_inputs[i:i+1] = enemy_state_b
             inputs_puyo0[i:i+1] = puyos_b[0]
             inputs_puyo1[i:i+1] = puyos_b[1]
-            #inputs_puyo2[i:i+1] = puyos_b[2]
 
             target = reward_b # state_b盤面の時action_bを行って得た報酬
 
@@ -412,7 +412,7 @@ class DQNAgent:
 def map2batch(gameMap,batch_size = 1):
     return gameMap.reshape((batch_size,12,6,6))
 
-direct.PAUSE = 0.025
+direct.PAUSE = 0.02
 
 class Sousa:
         
@@ -615,9 +615,15 @@ def get_dodai_reward(banmen):
     banmen = np.array(banmen)
     ruiji = 0
     for dodai in dodailist:
-        tmp = np.count_nonzero(banmen == dodai) / dodai.size
-        #print(str(tmp))
-        ruiji = max(ruiji, tmp)
+        count = 0
+        ans_count = 0
+        for i in range(4):
+            for j in range(6):
+                if dodai[i][j] != 7:
+                    count += 1
+                    if banmen[i][j] == dodai[i][j]:
+                        ans_count += 1
+        ruiji = max(ruiji, (ans_count/count))
     
     return ruiji
 
@@ -636,7 +642,7 @@ def main():
     field = np.zeros((12,6,6))
     next1 = np.zeros((2,4))
     next2 = np.zeros((2,4))
-    DqnAgent.get_action([field.reshape(1,12,6,6), field.reshape(1,12,6,6), next1.reshape(1,2,4), next2.reshape(1,2,4)])
+    tmp = DqnAgent.qnet.predict([field.reshape(1,12,6,6), field.reshape(1,12,6,6), next1.reshape(1,2,4), next2.reshape(1,2,4)])
     capture = cv2.VideoCapture(1)
 
     if (capture.isOpened()== False):  
@@ -646,9 +652,11 @@ def main():
     ret, img = capture.read()
     count_time = 0
     reward_list = []
+    dodai_reward_list = []
     print("Ready")
     while True:
         reward_sum = 0
+        dodai_reward_sum = 0
         turn = 0
         win_flag = False
         lose_flag = False
@@ -658,6 +666,7 @@ def main():
         dodai_fields = collections.deque([], 2)
         nexts = collections.deque([], 2)
         scores = collections.deque([], 2)
+        srewards = collections.deque([], 2)
         next_puyos = get_next_puyo_info(img)
         one_hot_next = np.array(np.eye(NEXT_LABELS)[next_puyos])
         nexts.append(one_hot_next)
@@ -699,8 +708,10 @@ def main():
                         try_action(action+1)
                         turn += 1
                         if len(fields) == 2:
-                            if turn <= 20:
+                            reward = 0
+                            if turn <= 18:
                                 reward = get_dodai_reward(dodai_fields[0]) #土台の一致度
+                                dodai_reward_sum += reward
                                 reward_sum += reward
                                 
                             else:
@@ -724,6 +735,7 @@ def main():
         DqnAgent.learning()
         DqnAgent.qnet_target = DqnAgent.qnet
         reward_list.append(reward_sum)
+        dodai_reward_list.append(dodai_reward_sum)
         if win_flag:
             print('win')
             win_count += 1
@@ -733,7 +745,7 @@ def main():
         if count == EPISODE:
             break
 
-        if count % 50 == 0:
+        if count % 35 == 0:
             if DqnAgent.epsilon > 0.1:
                 DqnAgent.epsilon -= 0.1
 
@@ -747,10 +759,16 @@ def main():
                 for i in reward_list:
                     writer.writerow([i])
 
+            csv_path = r"./dodai_reward_" + str(count) + ".csv"
+            with open(csv_path, 'w', newline='') as file:
+                writer = csv.writer(file)
+                for i in dodai_reward_list:
+                    writer.writerow([i])
+
             if win_count == 100 or lose_count == 100:
                 win_count = 0
                 lose_count = 0
-                time.sleep(20)
+                time.sleep(10)
                 direct.press('enter')
                 time.sleep(5)
                 direct.press('enter')
@@ -758,7 +776,7 @@ def main():
             else:
                 win_count = 0
                 lose_count = 0
-                time.sleep(10)
+                time.sleep(8)
                 direct.press('esc')
                 time.sleep(2)
                 direct.press('down')
